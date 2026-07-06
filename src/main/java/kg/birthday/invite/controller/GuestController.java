@@ -1,8 +1,11 @@
 package kg.birthday.invite.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import kg.birthday.invite.dto.ActivityView;
+import kg.birthday.invite.entity.ActivityResultEntity;
 import kg.birthday.invite.entity.Event;
 import kg.birthday.invite.entity.Guest;
-import kg.birthday.invite.entity.ActivityResultEntity;
 import kg.birthday.invite.enums.RsvpStatus;
 import kg.birthday.invite.service.ActivityService;
 import kg.birthday.invite.service.EventService;
@@ -20,7 +23,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @Controller
 @RequiredArgsConstructor
@@ -30,6 +35,7 @@ public class GuestController {
     private final GuestService guestService;
     private final ThemeService themeService;
     private final ActivityService activityService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/")
     public String landing(Model model) {
@@ -75,9 +81,22 @@ public class GuestController {
         model.addAttribute("theme", themeService.getEffectiveTheme(guest));
 
         if (guest.getStatus() == RsvpStatus.ACCEPTED) {
+            List<ActivityView> activityViews = activityService.getEnabledActivityViews(event.getId());
+            List<ActivityView> gameActivityViews = activityViews.stream()
+                    .filter(activity -> !"guest-certificates".equals(activity.instance().getModuleSlug()))
+                    .toList();
+            Optional<ActivityView> certificateActivity = activityViews.stream()
+                    .filter(activity -> "guest-certificates".equals(activity.instance().getModuleSlug()))
+                    .findFirst();
+            Map<Long, List<ActivityResultEntity>> guestResultsByActivity = activityService.getGuestResultsByActivity(event.getId(), guest.getId());
             model.addAttribute("wishlist", eventService.getWishlist(event.getId()));
             model.addAttribute("acceptedGuests", guestService.getAcceptedGuests(event.getId()));
-            model.addAttribute("activityViews", activityService.getEnabledActivityViews(event.getId()));
+            model.addAttribute("activityViews", activityViews);
+            model.addAttribute("gameActivityViews", gameActivityViews);
+            model.addAttribute("certificateActivity", certificateActivity.orElse(null));
+            model.addAttribute("guestCertificates", activityService.getGuestCertificates(event.getId(), guest.getId()));
+            model.addAttribute("guestResultsByActivity", guestResultsByActivity);
+            model.addAttribute("guestResultsJsonByActivity", guestResultsJsonByActivity(guestResultsByActivity));
             model.addAttribute("leaderboard", activityService.getEventLeaderboard(event.getId()));
             return "guest-accepted";
         }
@@ -168,6 +187,31 @@ public class GuestController {
             return Long.parseLong(String.valueOf(value));
         } catch (RuntimeException ignored) {
             return null;
+        }
+    }
+
+    private Map<Long, String> guestResultsJsonByActivity(Map<Long, List<ActivityResultEntity>> guestResultsByActivity) {
+        Map<Long, String> jsonByActivity = new LinkedHashMap<>();
+        guestResultsByActivity.forEach((activityId, results) -> jsonByActivity.put(activityId, toJson(results.stream()
+                .map(this::resultData)
+                .toList())));
+        return jsonByActivity;
+    }
+
+    private Map<String, Object> resultData(ActivityResultEntity result) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("id", result.getId());
+        data.put("points", result.getPoints());
+        data.put("createdAt", result.getCreatedAt());
+        data.put("data", result.getResultData());
+        return data;
+    }
+
+    private String toJson(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException e) {
+            return "[]";
         }
     }
 }

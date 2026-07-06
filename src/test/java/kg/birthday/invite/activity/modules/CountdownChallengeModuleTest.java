@@ -22,13 +22,16 @@ class CountdownChallengeModuleTest {
 
         ActivityResult result = module.processAction(
                 module.getDefaultConfig(),
-                Map.of("_eventDate", eventDate.toString(), "type", "complete_task", "taskId", "day-7", "answer", "Добрый"),
+                Map.of("_eventDate", eventDate.toString(), "type", "complete_task", "taskId", "day-7", "answer", "ready"),
                 List.of()
         );
 
         assertThat(result.isSuccess()).isTrue();
         assertThat(result.getPoints()).isEqualTo(5);
+        assertThat(result.getData()).containsEntry("type", "countdown-challenge");
         assertThat(result.getData()).containsEntry("taskId", "day-7");
+        assertThat(result.getData()).containsEntry("completed", true);
+        assertThat(result.getData()).containsEntry("answer", "ready");
     }
 
     @Test
@@ -72,5 +75,29 @@ class CountdownChallengeModuleTest {
         config.put("tasks", List.of(task));
 
         assertThat(module.validateConfig(config)).anyMatch(error -> error.contains("correctCode"));
+    }
+
+    @Test
+    void rejectsWrongSecretCodeAnswer() {
+        LocalDate eventDate = LocalDate.now(ZoneId.of("Asia/Bishkek"));
+        Map<String, Object> task = new LinkedHashMap<>();
+        task.put("id", "secret");
+        task.put("dayOffset", 0);
+        task.put("title", "Code");
+        task.put("description", "Enter code");
+        task.put("type", "secret_code");
+        task.put("correctCode", "cake");
+        task.put("points", 5);
+        Map<String, Object> config = new LinkedHashMap<>(module.getDefaultConfig());
+        config.put("tasks", List.of(task));
+
+        ActivityResult result = module.processAction(
+                config,
+                Map.of("_eventDate", eventDate.toString(), "type", "complete_task", "taskId", "secret", "answer", "wrong"),
+                List.of()
+        );
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getPoints()).isZero();
     }
 }

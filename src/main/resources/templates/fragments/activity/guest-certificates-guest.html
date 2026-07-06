@@ -2,21 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <th:block th:fragment="content(activity, guest)">
     <div class="guest-certificates-widget stack" th:if="${activity.instance.config['showOnGuestPage'] != false}">
-        <div class="activity-mini-hero">
-            <h4 th:text="${activity.instance.config['title']}">Сертификаты гостей</h4>
-            <p class="muted" th:text="${activity.instance.config['description']}">Памятные награды праздника.</p>
-        </div>
-        <div class="certificate-card-grid">
-            <a class="certificate-mini-card"
-               th:each="result : ${activity.results}"
-               th:if="${result.guest.id == guest.id and result.resultData['type'] == 'guest-certificate'}"
-               th:href="@{/invite/{code}/certificates/{resultId}(code=${guest.code}, resultId=${result.id})}">
-                <span th:text="${result.resultData['certificateCode']}">CERT</span>
-                <strong th:text="${result.resultData['certificateTitle']}">Сертификат</strong>
-                <small th:text="${result.resultData['certificateDescription']}">Описание</small>
-            </a>
-        </div>
-        <a class="secondary" th:href="@{/invite/{code}/certificates(code=${guest.code})}">Открыть мои сертификаты</a>
+        <a class="btn" th:href="@{/invite/{code}/certificates(code=${guest.code})}">Мои награды</a>
     </div>
 </th:block>
 </html>

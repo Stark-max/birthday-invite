@@ -1,5 +1,33 @@
 const guessGuestStates = {};
 
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".guess-guest-root[data-instance-id]").forEach(initGuessGuestRoot);
+});
+
+function initGuessGuestRoot(root) {
+  const instanceId = root.dataset.instanceId;
+  const guestId = Number(root.dataset.guestId);
+  const config = readActivityJson(`guess-guest-config-${instanceId}`);
+  const results = readActivityJson(`guess-guest-results-${instanceId}`) || [];
+  if (!config) return;
+  const previous = results.find((result) => result.data?.type === "guess-guest");
+  if (previous && config.allowRetry === false) {
+    guessGuestStates[instanceId] = {
+      guestId,
+      config,
+      rounds: Array.isArray(config.rounds) ? config.rounds : [],
+      index: 0,
+      answers: {}
+    };
+    renderGuessGuestResult(instanceId, {
+      success: true,
+      message: "Ты уже проходил(а) эту игру.",
+      points: previous.points || 0,
+      data: previous.data || {}
+    });
+  }
+}
+
 function startGuessGuest(instanceId, guestId) {
   const config = readActivityJson(`guess-guest-config-${instanceId}`);
   const root = document.getElementById(`guess-guest-root-${instanceId}`);
@@ -72,21 +100,37 @@ function renderGuessGuestResult(instanceId, result) {
   if (!root) return;
   const data = result.data || {};
   const answers = Array.isArray(data.answers) ? data.answers : [];
+  const rounds = Array.isArray(state.config?.rounds) ? state.config.rounds : [];
+  const roundById = new Map(rounds.map((round, index) => [String(round.id), { ...round, index }]));
   const details = state.config?.showCorrectAnswer === false
     ? ""
-    : answers.map((answer) => `
-        <li class="${answer.correct ? "correct" : "wrong"}">
-          ${escapeHtml(answer.roundId)}: ${answer.correct ? "верно" : "неверно"}
-          ${answer.correctGuestName ? ` · правильный ответ: ${escapeHtml(answer.correctGuestName)}` : ""}
-        </li>
-      `).join("");
+    : answers.map((answer, index) => {
+        const round = roundById.get(String(answer.roundId));
+        const questionNumber = round ? round.index + 1 : index + 1;
+        const clue = round?.clue ? `<p>${escapeHtml(round.clue)}</p>` : "";
+        return `
+          <div class="guess-result-row ${answer.correct ? "correct" : "wrong"}" data-round-id="${escapeHtml(answer.roundId)}">
+            <div>
+              <strong>Вопрос ${questionNumber}</strong>
+              ${clue}
+              ${answer.correctGuestName ? `<span>Правильный ответ: ${escapeHtml(answer.correctGuestName)}</span>` : ""}
+            </div>
+            <em>${answer.correct ? "Верно" : "Неверно"}</em>
+          </div>
+        `;
+      }).join("");
+  const total = Number(data.totalQuestions || answers.length || 0);
+  const correct = Number(data.correctAnswers || 0);
+  const percent = Number(data.percent || 0);
   root.innerHTML = `
-    <div class="activity-result-card">
-      <h4>${result.success ? "Готово" : "Не получилось"}</h4>
+    <div class="activity-result-card guess-result-summary">
+      <div>
+        <h4>${result.success ? "Готово" : "Не получилось"}</h4>
+        ${result.success ? `<span class="guess-score-pill">${Number(result.points || 0)} очков</span>` : ""}
+      </div>
       <p>${escapeHtml(result.message || "")}</p>
-      <strong>${Number(result.points || 0)} очков</strong>
-      ${result.success ? `<p>${Number(data.correctAnswers || 0)} / ${Number(data.totalQuestions || 0)} · ${Number(data.percent || 0)}%</p>` : ""}
-      ${details ? `<ul class="guess-result-list">${details}</ul>` : ""}
+      ${result.success ? `<p>${correct} / ${total} · ${percent}%</p>` : ""}
+      ${details ? `<div class="guess-result-list">${details}</div>` : ""}
       ${state.config?.showLeaderboard === false ? "" : `<button class="secondary" type="button" onclick="loadGuessGuestLeaderboard(${instanceId})">Показать лидерборд</button>`}
       <div id="guess-guest-leaderboard-${instanceId}"></div>
     </div>
@@ -157,6 +201,15 @@ function readActivityJson(id) {
   } catch (error) {
     return null;
   }
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 function escapeJs(value) {

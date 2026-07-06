@@ -33,6 +33,14 @@ class GuessGuestModuleTest {
         assertThat(result.getPoints()).isEqualTo(10);
         assertThat(result.getData()).containsEntry("totalQuestions", 2);
         assertThat(result.getData()).containsEntry("correctAnswers", 1);
+        assertThat(result.getData()).containsEntry("percent", 50);
+        assertThat((List<?>) result.getData().get("answers")).hasSize(2);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> firstAnswer = (Map<String, Object>) ((List<?>) result.getData().get("answers")).get(0);
+        assertThat(firstAnswer).containsEntry("roundId", "r1");
+        assertThat(firstAnswer).containsEntry("correct", true);
+        assertThat(firstAnswer).containsEntry("selectedGuestId", 12L);
+        assertThat(firstAnswer).containsEntry("correctGuestId", 12L);
     }
 
     @Test

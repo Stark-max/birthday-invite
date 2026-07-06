@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,7 +32,11 @@ public class ActivityController {
     private final AdminSessionService adminSessionService;
 
     @GetMapping("/admin/activities")
-    public String activities(HttpSession session, Model model) {
+    public String activities(
+            @RequestParam(required = false) String certificatesMessage,
+            HttpSession session,
+            Model model
+    ) {
         Event event = adminSessionService.currentEvent(session).orElse(null);
         if (event == null) {
             return accessRedirect(session);
@@ -46,6 +51,8 @@ public class ActivityController {
         model.addAttribute("disabledActivityViews", activityService.getDisabledActivityViews(event.getId()));
         model.addAttribute("acceptedGuests", activityService.getAcceptedGuests(event.getId()));
         model.addAttribute("leaderboard", activityService.getEventLeaderboard(event.getId()));
+        model.addAttribute("hasPositiveActivityResults", activityService.hasPositiveActivityResults(event.getId()));
+        model.addAttribute("certificatesMessage", certificatesMessage);
         model.addAttribute("theme", themeService.getGlobalTheme(event.getId()));
         return "admin-activities";
     }
@@ -110,6 +117,7 @@ public class ActivityController {
             @RequestParam String certificateTypeSlug,
             @RequestParam(required = false) String customTitle,
             @RequestParam(required = false) String customText,
+            RedirectAttributes redirectAttributes,
             HttpSession session
     ) {
         Event event = adminSessionService.currentEvent(session).orElse(null);
@@ -117,6 +125,7 @@ public class ActivityController {
             return accessRedirect(session);
         }
         activityService.awardCertificate(event.getId(), instanceId, guestId, certificateTypeSlug, customTitle, customText);
+        redirectAttributes.addAttribute("certificatesMessage", "Сертификат выдан. Он появился у выбранного гостя на странице «Мои награды».");
         return "redirect:/admin/activities";
     }
 
@@ -124,13 +133,19 @@ public class ActivityController {
     public String generateCertificates(
             @PathVariable Long instanceId,
             @RequestParam(defaultValue = "false") boolean overwriteExisting,
+            RedirectAttributes redirectAttributes,
             HttpSession session
     ) {
         Event event = adminSessionService.currentEvent(session).orElse(null);
         if (event == null) {
             return accessRedirect(session);
         }
-        activityService.generateCertificates(event.getId(), instanceId, overwriteExisting);
+        List<ActivityResult> generated = activityService.generateCertificates(event.getId(), instanceId, overwriteExisting);
+        if (generated.isEmpty()) {
+            redirectAttributes.addAttribute("certificatesMessage", "Новые сертификаты не созданы: нет результатов с очками или такие награды уже есть.");
+        } else {
+            redirectAttributes.addAttribute("certificatesMessage", "Сгенерировано сертификатов: " + generated.size() + ".");
+        }
         return "redirect:/admin/activities";
     }
 
@@ -138,6 +153,7 @@ public class ActivityController {
     public String deleteCertificate(
             @PathVariable Long instanceId,
             @PathVariable Long resultId,
+            RedirectAttributes redirectAttributes,
             HttpSession session
     ) {
         Event event = adminSessionService.currentEvent(session).orElse(null);
@@ -145,6 +161,7 @@ public class ActivityController {
             return accessRedirect(session);
         }
         activityService.deleteCertificate(event.getId(), instanceId, resultId);
+        redirectAttributes.addAttribute("certificatesMessage", "Сертификат удалён.");
         return "redirect:/admin/activities";
     }
 

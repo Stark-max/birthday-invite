@@ -1,6 +1,7 @@
 package kg.birthday.invite.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import kg.birthday.invite.activity.ActivityResult;
 import kg.birthday.invite.activity.modules.CountdownChallengeModule;
 import kg.birthday.invite.activity.modules.GuestCertificatesModule;
 import kg.birthday.invite.activity.modules.GuessGuestModule;
@@ -21,13 +22,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.util.LinkedMultiValueMap;
 
+import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ActivityServiceFormConfigTest {
@@ -61,6 +66,13 @@ class ActivityServiceFormConfigTest {
                 new ObjectMapper()
         );
         when(activityInstanceRepository.save(any(ActivityInstance.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(activityResultRepository.save(any(ActivityResultEntity.class))).thenAnswer(invocation -> {
+            ActivityResultEntity entity = invocation.getArgument(0);
+            if (entity.getId() == null) {
+                entity.setId(99L);
+            }
+            return entity;
+        });
     }
 
     @Test
@@ -280,6 +292,76 @@ class ActivityServiceFormConfigTest {
     }
 
     @Test
+    void awardCertificateCreatesGuestCertificateResult() {
+        Event event = event();
+        ActivityInstance certificates = certificateInstance(event);
+        Guest guest = guest(event, 3L, "Alina");
+        when(activityInstanceRepository.findByIdAndEventId(7L, 10L)).thenReturn(Optional.of(certificates));
+        when(guestRepository.findByIdAndEventId(3L, 10L)).thenReturn(Optional.of(guest));
+
+        ActivityResult result = activityService.awardCertificate(10L, 7L, 3L, "best_dancer", null, null);
+
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(result.getData()).containsEntry("type", "guest-certificate");
+        assertThat(result.getData()).containsEntry("guestId", 3L);
+        assertThat(result.getData()).containsEntry("resultId", 99L);
+        org.mockito.ArgumentCaptor<ActivityResultEntity> saved = org.mockito.ArgumentCaptor.forClass(ActivityResultEntity.class);
+        verify(activityResultRepository).save(saved.capture());
+        assertThat(saved.getValue().getGuest()).isSameAs(guest);
+        assertThat(saved.getValue().getActivityInstance()).isSameAs(certificates);
+        assertThat(saved.getValue().getResultData()).containsEntry("type", "guest-certificate");
+    }
+
+    @Test
+    void getGuestCertificatesReturnsOnlyCertificateResultsForCurrentGuestQuery() {
+        Event event = event();
+        ActivityInstance certificates = certificateInstance(event);
+        Guest guest = guest(event, 3L, "Alina");
+        ActivityResultEntity certificate = result(certificates, guest, 0, Map.of("type", "guest-certificate"));
+        ActivityResultEntity score = result(certificates, guest, 5, Map.of("type", "quiz"));
+        when(activityResultRepository.findAllByActivityInstance_Event_IdAndGuest_IdOrderByCreatedAtDesc(10L, 3L))
+                .thenReturn(List.of(score, certificate));
+
+        List<ActivityResultEntity> certificatesForGuest = activityService.getGuestCertificates(10L, 3L);
+
+        assertThat(certificatesForGuest).containsExactly(certificate);
+        verify(activityResultRepository).findAllByActivityInstance_Event_IdAndGuest_IdOrderByCreatedAtDesc(10L, 3L);
+    }
+
+    @Test
+    void getGuestCertificateDoesNotReturnCertificateForAnotherGuest() {
+        when(activityResultRepository.findByIdAndActivityInstance_Event_IdAndGuest_Id(99L, 10L, 4L))
+                .thenReturn(Optional.empty());
+
+        Optional<ActivityResultEntity> certificate = activityService.getGuestCertificate(10L, 4L, 99L);
+
+        assertThat(certificate).isEmpty();
+    }
+
+    @Test
+    void generateCertificatesDoesNotDuplicateExistingTypeWithoutOverwrite() {
+        Event event = event();
+        ActivityInstance certificates = certificateInstance(event);
+        certificates.setConfig(certificateConfig("most_active_guest", "total_leaderboard", Map.of("rank", 1)));
+        Guest guest = guest(event, 3L, "Alina");
+        ActivityInstance quiz = instance("quiz");
+        quiz.setDisplayName("Quiz");
+        ActivityResultEntity score = result(quiz, guest, 10, Map.of("type", "quiz"));
+        ActivityResultEntity existingCertificate = result(certificates, guest, 0, Map.of(
+                "type", "guest-certificate",
+                "certificateTypeSlug", "most_active_guest"
+        ));
+        when(activityInstanceRepository.findByIdAndEventId(7L, 10L)).thenReturn(Optional.of(certificates));
+        when(activityResultRepository.findAllByActivityInstance_Event_Id(10L)).thenReturn(List.of(score));
+        when(activityResultRepository.findAllByActivityInstanceIdOrderByCreatedAtDesc(7L)).thenReturn(List.of(existingCertificate));
+
+        List<ActivityResult> generated = activityService.generateCertificates(10L, 7L, false);
+
+        assertThat(generated).isEmpty();
+        verify(activityResultRepository, never()).save(any(ActivityResultEntity.class));
+    }
+
+    @Test
     void disabledActivityViewsUseDisabledRepositoryRows() {
         ActivityInstance disabled = instance("wheel");
         disabled.setEnabled(false);
@@ -373,6 +455,46 @@ class ActivityServiceFormConfigTest {
         instance.setDisplayName("Old");
         instance.setEnabled(true);
         return instance;
+    }
+
+    private static Event event() {
+        Event event = new Event();
+        event.setId(10L);
+        event.setName("Birthday");
+        event.setDate(LocalDate.of(2026, 6, 30));
+        return event;
+    }
+
+    private static Guest guest(Event event, Long id, String name) {
+        Guest guest = new Guest();
+        guest.setId(id);
+        guest.setEvent(event);
+        guest.setLabel(name);
+        guest.setName(name);
+        return guest;
+    }
+
+    private static ActivityInstance certificateInstance(Event event) {
+        ActivityInstance instance = new ActivityInstance();
+        instance.setId(7L);
+        instance.setEvent(event);
+        instance.setModuleSlug("guest-certificates");
+        instance.setDisplayName("Certificates");
+        instance.setEnabled(true);
+        instance.setConfig(new GuestCertificatesModule().getDefaultConfig());
+        return instance;
+    }
+
+    private static Map<String, Object> certificateConfig(String slug, String source, Map<String, Object> rule) {
+        Map<String, Object> config = new LinkedHashMap<>(new GuestCertificatesModule().getDefaultConfig());
+        Map<String, Object> type = new LinkedHashMap<>();
+        type.put("slug", slug);
+        type.put("title", "Award");
+        type.put("description", "Description");
+        type.put("source", source);
+        type.put("rule", rule);
+        config.put("certificateTypes", List.of(type));
+        return config;
     }
 
     private static ActivityResultEntity result(ActivityInstance instance, Guest guest, int points, Map<String, Object> data) {

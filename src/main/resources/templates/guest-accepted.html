@@ -149,14 +149,14 @@
         </div>
     </section>
 
-    <section class="guest-section activities-showcase" th:if="${!#lists.isEmpty(activityViews)}">
+    <section class="guest-section activities-showcase" th:if="${!#lists.isEmpty(gameActivityViews)}">
         <div class="section-heading section-heading-center">
             <span class="section-kicker">Мини-игры</span>
             <h2>Развлечения на празднике</h2>
             <p>Открывай карточки, набирай очки и оживляй вечеринку до начала праздника.</p>
         </div>
         <div class="activity-grid">
-            <article class="activity-card" th:each="activity : ${activityViews}">
+            <article class="activity-card" th:each="activity : ${gameActivityViews}">
                 <div class="activity-card-header">
                     <div class="activity-icon" th:text="${activity.module.icon}">A</div>
                     <div>
@@ -184,12 +184,37 @@
                     <th:block th:if="${activity.instance.moduleSlug == 'countdown-challenge'}">
                         <th:block th:replace="~{fragments/activity/countdown-challenge-guest :: content(${activity}, ${guest}, ${event})}"></th:block>
                     </th:block>
-                    <th:block th:if="${activity.instance.moduleSlug == 'guest-certificates'}">
-                        <th:block th:replace="~{fragments/activity/guest-certificates-guest :: content(${activity}, ${guest})}"></th:block>
-                    </th:block>
                 </div>
             </article>
         </div>
+    </section>
+
+    <section class="guest-section awards-panel" th:if="${certificateActivity != null}">
+        <div class="section-heading">
+            <span class="section-kicker">Награды</span>
+            <h2>Мои награды</h2>
+            <p>Здесь появятся сертификаты, которые выдаст админ после праздника.</p>
+        </div>
+        <div class="awards-preview-grid" th:if="${!#lists.isEmpty(guestCertificates)}">
+            <a class="certificate-mini-card"
+               th:each="certificate, iter : ${guestCertificates}"
+               th:if="${iter.index < 3}"
+               th:href="@{/invite/{code}/certificates/{resultId}(code=${guest.code}, resultId=${certificate.id})}">
+                <span th:text="${certificate.resultData['certificateCode']}">CERT</span>
+                <strong th:text="${certificate.resultData['certificateTitle']}">Сертификат</strong>
+                <small>
+                    <span th:text="${certificate.resultData['source']}">manual</span>
+                    <span th:if="${certificate.resultData['issuedAt']}"> · </span>
+                    <span th:text="${certificate.resultData['issuedAt']}">issuedAt</span>
+                </small>
+            </a>
+        </div>
+        <div class="award-empty-card" th:if="${#lists.isEmpty(guestCertificates)}">
+            <strong>Пока наград нет</strong>
+            <p class="muted">Когда админ выдаст сертификаты, они появятся здесь.</p>
+        </div>
+        <a class="btn" th:href="@{/invite/{code}/certificates(code=${guest.code})}"
+           th:text="${#lists.isEmpty(guestCertificates) ? 'Открыть страницу наград' : 'Посмотреть все награды'}">Открыть страницу наград</a>
     </section>
 
     <section class="guest-section leaderboard-panel" th:if="${!#lists.isEmpty(leaderboard)}">

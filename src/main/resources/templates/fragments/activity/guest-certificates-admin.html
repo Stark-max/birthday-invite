@@ -70,9 +70,13 @@
         <div class="activity-editor-heading">
             <strong>Выдать сертификат</strong>
             <button type="submit"
+                    class="primary"
+                    th:disabled="${#lists.isEmpty(acceptedGuests)}"
                     th:formaction="@{/admin/activities/{id}/certificates/award(id=${activity.instance.id})}">Выдать</button>
         </div>
-        <div class="activity-editor-grid">
+        <p class="muted">После выдачи сертификат появится у выбранного гостя на странице «Мои награды».</p>
+        <p class="muted" th:if="${#lists.isEmpty(acceptedGuests)}">Сначала добавьте гостей и дождитесь RSVP «Приду».</p>
+        <div class="activity-editor-grid" th:if="${!#lists.isEmpty(acceptedGuests)}">
             <label>Гость
                 <select name="guestId">
                     <option th:each="accepted : ${acceptedGuests}"
@@ -94,12 +98,16 @@
                 <input name="customText" placeholder="Можно оставить пустым">
             </label>
         </div>
-        <label class="checkbox-line">
-            <input name="overwriteExisting" type="checkbox" value="true">
-            <span>Перегенерировать существующие автоматические сертификаты</span>
-        </label>
-        <button class="secondary" type="submit"
-                th:formaction="@{/admin/activities/{id}/certificates/generate(id=${activity.instance.id})}">Сгенерировать по результатам</button>
+        <div class="certificate-generate-panel">
+            <strong>Автогенерация по результатам</strong>
+            <p class="muted" th:if="${!hasPositiveActivityResults}">Автогенерация сработает после того, как гости наберут очки.</p>
+            <label class="checkbox-line">
+                <input name="overwriteExisting" type="checkbox" value="true">
+                <span>Перегенерировать существующие автоматические сертификаты</span>
+            </label>
+            <button class="secondary" type="submit"
+                    th:formaction="@{/admin/activities/{id}/certificates/generate(id=${activity.instance.id})}">Сгенерировать по результатам активностей</button>
+        </div>
     </div>
 
     <div class="activity-editor-section" th:if="${!#lists.isEmpty(activity.results)}">

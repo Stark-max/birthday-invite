@@ -155,6 +155,11 @@ class GuestControllerActivityRenderTest {
         when(guestService.getGuestByCode("abc12345")).thenReturn(Optional.of(guest));
         when(eventService.getWishlist(1L)).thenReturn(List.of());
         when(guestService.getAcceptedGuests(1L)).thenReturn(List.of(guest));
+        when(activityService.getGuestResultsByActivity(1L, 1L)).thenReturn(Map.of(
+                12L, List.of(),
+                13L, List.of()
+        ));
+        when(activityService.getGuestCertificates(1L, 1L)).thenReturn(List.of());
         when(activityService.getEnabledActivityViews(1L)).thenReturn(List.of(
                 view(photo, "🖼", "{\"memes\":[{\"id\":\"drake\",\"name\":\"Drake Hotline Bling\"}]}"),
                 view(quiz, "🧠", "{\"questions\":[{\"id\":\"q1\",\"text\":\"Вопрос\"}]}"),
@@ -174,7 +179,9 @@ class GuestControllerActivityRenderTest {
                 .andExpect(content().string(containsString("quiz-root-11")))
                 .andExpect(content().string(containsString("guess-guest-root-12")))
                 .andExpect(content().string(containsString("countdown-root-13")))
-                .andExpect(content().string(containsString("Открыть мои сертификаты")))
+                .andExpect(content().string(not(containsString("activity-14"))))
+                .andExpect(content().string(containsString("Мои награды")))
+                .andExpect(content().string(containsString("Открыть страницу наград")))
                 .andExpect(content().string(containsString("effect-spring")))
                 .andExpect(content().string(containsString("scene-spring")))
                 .andExpect(content().string(containsString("{\"questions\"")))

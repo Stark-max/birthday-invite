@@ -2,12 +2,18 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <th:block th:fragment="content(activity, guest)">
     <script type="application/json" th:id="'guess-guest-config-' + ${activity.instance.id}" th:utext="${activity.configJson}"></script>
+    <script type="application/json"
+            th:id="'guess-guest-results-' + ${activity.instance.id}"
+            th:utext="${guestResultsJsonByActivity[activity.instance.id] ?: '[]'}">[]</script>
     <div class="guess-guest-game stack">
         <div class="activity-mini-hero">
             <h4 th:text="${activity.instance.config['title']}">Угадай гостя</h4>
             <p class="muted" th:text="${activity.instance.config['description']}">Прочитай подсказку и выбери гостя.</p>
         </div>
-        <div th:id="'guess-guest-root-' + ${activity.instance.id}">
+        <div th:id="'guess-guest-root-' + ${activity.instance.id}"
+             class="guess-guest-root"
+             th:data-instance-id="${activity.instance.id}"
+             th:data-guest-id="${guest.id}">
             <button type="button" th:onclick="|startGuessGuest(${activity.instance.id}, ${guest.id})|">Начать игру</button>
         </div>
     </div>

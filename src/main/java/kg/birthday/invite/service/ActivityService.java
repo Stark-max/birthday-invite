@@ -211,6 +211,18 @@ public class ActivityService {
     }
 
     @Transactional(readOnly = true)
+    public Map<Long, List<ActivityResultEntity>> getGuestResultsByActivity(Long eventId, Long guestId) {
+        Map<Long, List<ActivityResultEntity>> resultsByActivity = new LinkedHashMap<>();
+        for (ActivityInstance activity : getEnabledActivities(eventId)) {
+            resultsByActivity.put(
+                    activity.getId(),
+                    activityResultRepository.findAllByActivityInstanceIdAndGuestIdOrderByCreatedAtDesc(activity.getId(), guestId)
+            );
+        }
+        return resultsByActivity;
+    }
+
+    @Transactional(readOnly = true)
     public boolean hasGuestPlayed(Long instanceId, Long guestId) {
         return activityResultRepository.existsByActivityInstanceIdAndGuestId(instanceId, guestId);
     }
@@ -259,6 +271,9 @@ public class ActivityService {
         if (!bool(instance.getConfig().getOrDefault("autoGenerateEnabled", true))) {
             return List.of();
         }
+        if (getEventLeaderboard(eventId).isEmpty()) {
+            return List.of();
+        }
         List<ActivityResult> generated = new ArrayList<>();
         for (Map<String, Object> certificateType : GuestCertificatesModule.certificateTypes(instance.getConfig())) {
             String source = text(certificateType.get("source"));
@@ -296,6 +311,12 @@ public class ActivityService {
                 .filter(item -> Objects.equals(item.getActivityInstance().getEvent().getId(), eventId))
                 .orElseThrow(() -> new IllegalArgumentException("Certificate result not found: " + resultId));
         activityResultRepository.delete(result);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean hasPositiveActivityResults(Long eventId) {
+        return activityResultRepository.findAllByActivityInstance_Event_Id(eventId).stream()
+                .anyMatch(result -> result.getPoints() > 0);
     }
 
     @Transactional(readOnly = true)

@@ -44,6 +44,7 @@
 
     <section class="card stack" style="margin-top:18px">
         <h2>Подключённые</h2>
+        <p class="status accepted" th:if="${certificatesMessage}" th:text="${certificatesMessage}">Сообщение</p>
         <div class="stack" th:each="activity : ${enabledActivityViews}">
             <article class="card stack">
                 <div class="topbar" style="margin-bottom:0">
