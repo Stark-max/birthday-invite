@@ -7,7 +7,9 @@ import kg.birthday.invite.activity.modules.TruthOrDareModule;
 import kg.birthday.invite.activity.modules.WheelOfFortuneModule;
 import kg.birthday.invite.activity.registry.ActivityRegistry;
 import kg.birthday.invite.entity.ActivityInstance;
+import kg.birthday.invite.entity.ActivityResultEntity;
 import kg.birthday.invite.entity.Event;
+import kg.birthday.invite.entity.Guest;
 import kg.birthday.invite.repository.ActivityInstanceRepository;
 import kg.birthday.invite.repository.ActivityResultRepository;
 import kg.birthday.invite.repository.EventRepository;
@@ -28,12 +30,13 @@ import static org.mockito.Mockito.when;
 class ActivityServiceFormConfigTest {
 
     ActivityInstanceRepository activityInstanceRepository;
+    ActivityResultRepository activityResultRepository;
     ActivityService activityService;
 
     @BeforeEach
     void setUp() {
         activityInstanceRepository = mock(ActivityInstanceRepository.class);
-        ActivityResultRepository activityResultRepository = mock(ActivityResultRepository.class);
+        activityResultRepository = mock(ActivityResultRepository.class);
         EventRepository eventRepository = mock(EventRepository.class);
         GuestRepository guestRepository = mock(GuestRepository.class);
         ActivityRegistry registry = new ActivityRegistry(List.of(
@@ -108,7 +111,7 @@ class ActivityServiceFormConfigTest {
         when(activityInstanceRepository.findById(1L)).thenReturn(Optional.of(instance));
         LinkedMultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("title", "Мемы");
-        form.add("instructions", "Придумай подпись");
+        form.add("instructions", "Повтори картинку");
         form.add("showGallery", "true");
         form.add("allowVoting", "true");
         form.add("pointsForCaption", "8");
@@ -124,7 +127,7 @@ class ActivityServiceFormConfigTest {
         ActivityInstance updated = activityService.updateActivityConfigFromForm(1L, form);
 
         assertThat(updated.getConfig()).containsEntry("title", "Мемы");
-        assertThat(updated.getConfig()).containsEntry("instructions", "Придумай подпись");
+        assertThat(updated.getConfig()).containsEntry("instructions", "Повтори картинку");
         assertThat(updated.getConfig()).containsEntry("showGallery", true);
         assertThat(updated.getConfig()).containsEntry("allowVoting", true);
         assertThat(updated.getConfig()).containsEntry("pointsForCaption", 8);
@@ -190,7 +193,41 @@ class ActivityServiceFormConfigTest {
         assertThat(views).hasSize(1);
         assertThat(views.get(0).instance().getDisplayName()).isEqualTo("Мем-челлендж");
         assertThat(views.get(0).instance().getConfig()).containsEntry("title", "Мем-челлендж");
-        assertThat((List<?>) views.get(0).instance().getConfig().get("memes")).hasSize(1);
+        assertThat((List<?>) views.get(0).instance().getConfig().get("memes")).hasSize(50);
+        assertThat((List<?>) views.get(0).instance().getConfig().get("memes"))
+                .allSatisfy(item -> assertThat((String) ((Map<?, ?>) item).get("imageUrl")).startsWith("https://i.imgflip.com/"));
+    }
+
+    @Test
+    void legacyPhotoChallengeResultRendersWithDefaultMemeImage() {
+        ActivityInstance legacy = instance("photo-challenge");
+        legacy.setDisplayName("Фото-челлендж");
+        legacy.setConfig(new java.util.LinkedHashMap<>(Map.of(
+                "title", "Фото-челлендж",
+                "challenges", List.of("Сделай фото"),
+                "allowVoting", true,
+                "showGallery", true
+        )));
+        ActivityResultEntity result = new ActivityResultEntity();
+        Guest guest = new Guest();
+        guest.setId(1L);
+        result.setGuest(guest);
+        result.setResultData(new java.util.LinkedHashMap<>(Map.of(
+                "type", "meme-challenge",
+                "legacyType", "photo-challenge",
+                "action", "assign",
+                "memeId", "legacy-1",
+                "memeName", "Старый фото-челлендж",
+                "memeImageUrl", ""
+        )));
+        when(activityInstanceRepository.findAllByEventIdAndEnabledTrueOrderBySortOrderAsc(10L)).thenReturn(List.of(legacy));
+        when(activityResultRepository.findAllByActivityInstanceIdOrderByCreatedAtDesc(1L)).thenReturn(List.of(result));
+
+        List<kg.birthday.invite.dto.ActivityView> views = activityService.getEnabledActivityViews(10L);
+        Map<String, Object> data = views.get(0).results().get(0).getResultData();
+
+        assertThat(data.get("memeId")).isEqualTo("drake-hotline-bling");
+        assertThat((String) data.get("memeImageUrl")).startsWith("https://i.imgflip.com/");
     }
 
     @Test

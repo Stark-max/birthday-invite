@@ -154,7 +154,7 @@ public class ActivityService {
 
     @Transactional
     public ActivityResult playActivity(Long instanceId, Long guestId, Map<String, Object> action) {
-        ActivityInstance instance = getInstance(instanceId);
+        ActivityInstance instance = getInstanceForUpdate(instanceId);
         if (!instance.isEnabled()) {
             return ActivityResult.error("Активность отключена.");
         }
@@ -216,8 +216,9 @@ public class ActivityService {
     private List<ActivityView> toViews(List<ActivityInstance> instances) {
         return instances.stream().map(instance -> {
             ActivityModule module = getModule(instance.getModuleSlug());
-            normalizeConfigForView(instance);
+            normalizeConfigForView(instance, module);
             List<ActivityResultEntity> results = getResults(instance.getId());
+            normalizeResultsForView(instance, results);
             Map<Long, Integer> pointsByGuest = results.stream()
                     .collect(Collectors.groupingBy(result -> result.getGuest().getId(), Collectors.summingInt(ActivityResultEntity::getPoints)));
             String leader = pointsByGuest.entrySet().stream()
@@ -241,7 +242,7 @@ public class ActivityService {
         }).toList();
     }
 
-    private void normalizeConfigForView(ActivityInstance instance) {
+    private void normalizeConfigForView(ActivityInstance instance, ActivityModule module) {
         if (!"photo-challenge".equals(instance.getModuleSlug())) {
             return;
         }
@@ -256,6 +257,7 @@ public class ActivityService {
         }
         if (config.get("memes") != null) {
             normalizePhotoChallengeTitle(config);
+            normalizePhotoChallengeInstructions(config);
             return;
         }
         List<String> legacyChallenges = config.get("challenges") instanceof List<?> list
@@ -264,25 +266,11 @@ public class ActivityService {
         if (legacyChallenges.isEmpty()) {
             return;
         }
-        Map<String, Object> normalized = new LinkedHashMap<>(config);
-        List<Map<String, Object>> memes = new java.util.ArrayList<>();
-        for (int i = 0; i < legacyChallenges.size(); i++) {
-            String name = legacyChallenges.get(i);
-            Map<String, Object> meme = new LinkedHashMap<>();
-            meme.put("id", "legacy-" + (i + 1));
-            meme.put("name", name);
-            meme.put("region", "legacy");
-            meme.put("imageUrl", "");
-            meme.put("prompt", "Придумай подпись");
-            meme.put("accent", colorForIndex(i));
-            meme.put("emoji", "📸");
-            memes.add(meme);
-        }
+        Map<String, Object> normalized = new LinkedHashMap<>(module.getDefaultConfig());
         normalizePhotoChallengeTitle(normalized);
-        normalized.put("instructions", normalized.getOrDefault("instructions", "Получи мем и придумай подпись про праздник."));
-        normalized.put("memes", memes);
-        normalized.put("pointsForCaption", normalized.getOrDefault("pointsForCaption", 5));
-        normalized.put("pointsForVote", normalized.getOrDefault("pointsForVote", 1));
+        normalizePhotoChallengeInstructions(normalized);
+        normalized.put("showGallery", config.getOrDefault("showGallery", normalized.get("showGallery")));
+        normalized.put("allowVoting", config.getOrDefault("allowVoting", normalized.get("allowVoting")));
         instance.setConfig(normalized);
     }
 
@@ -291,6 +279,86 @@ public class ActivityService {
         if (title == null || String.valueOf(title).isBlank() || "Фото-челлендж".equals(String.valueOf(title))) {
             config.put("title", "Мем-челлендж");
         }
+    }
+
+    private void normalizePhotoChallengeInstructions(Map<String, Object> config) {
+        Object instructions = config.get("instructions");
+        if (instructions == null
+                || String.valueOf(instructions).isBlank()
+                || String.valueOf(instructions).contains("придумай подпись")) {
+            config.put("instructions", "Крути рулетку: тебе выпадет мем-картинка, которую нужно повторить на фото.");
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void normalizeResultsForView(ActivityInstance instance, List<ActivityResultEntity> results) {
+        if (!"photo-challenge".equals(instance.getModuleSlug()) || results == null) {
+            return;
+        }
+        Object configuredMemes = instance.getConfig() == null ? null : instance.getConfig().get("memes");
+        if (!(configuredMemes instanceof List<?> list) || list.isEmpty()) {
+            return;
+        }
+        List<Map<String, Object>> memes = list.stream()
+                .filter(Map.class::isInstance)
+                .map(item -> (Map<String, Object>) item)
+                .toList();
+        for (ActivityResultEntity result : results) {
+            Map<String, Object> data = result.getResultData();
+            if (data == null || !isMemeResult(data)) {
+                continue;
+            }
+            String imageUrl = text(data.get("memeImageUrl"));
+            String memeId = text(data.get("memeId"));
+            if (imageUrl != null && !memeIdIsLegacy(memeId)) {
+                continue;
+            }
+            replacementMeme(data, memes).ifPresent(meme -> {
+                Map<String, Object> normalized = new LinkedHashMap<>(data);
+                normalized.put("memeId", textOrFallback(meme.get("id"), textOrFallback(data.get("memeId"), "meme")));
+                normalized.put("memeName", textOrFallback(meme.get("name"), textOrFallback(data.get("memeName"), "Мем")));
+                normalized.put("memeRegion", textOrFallback(meme.get("region"), textOrFallback(data.get("memeRegion"), "global")));
+                normalized.put("memePrompt", textOrFallback(meme.get("prompt"), textOrFallback(data.get("memePrompt"), "Повтори позу, эмоцию или сцену с картинки")));
+                normalized.put("memeImageUrl", textOrFallback(meme.get("imageUrl"), textOrFallback(data.get("memeImageUrl"), "")));
+                normalized.put("memeAccent", textOrFallback(meme.get("accent"), textOrFallback(data.get("memeAccent"), "#ffd166")));
+                normalized.put("memeEmoji", textOrFallback(meme.get("emoji"), textOrFallback(data.get("memeEmoji"), "🖼")));
+                result.setResultData(normalized);
+            });
+        }
+    }
+
+    private Optional<Map<String, Object>> replacementMeme(Map<String, Object> data, List<Map<String, Object>> memes) {
+        String memeId = text(data.get("memeId"));
+        if (memeIdIsLegacy(memeId)) {
+            Long legacyNumber = number(memeId.substring("legacy-".length()));
+            int index = legacyNumber == null ? 0 : Math.floorMod(legacyNumber.intValue() - 1, memes.size());
+            return Optional.of(memes.get(index));
+        }
+        return memes.stream()
+                .filter(meme -> Objects.equals(text(meme.get("id")), memeId))
+                .findFirst();
+    }
+
+    private boolean isMemeResult(Map<String, Object> data) {
+        return "meme-challenge".equals(String.valueOf(data.get("type")))
+                || "photo-challenge".equals(String.valueOf(data.get("legacyType")));
+    }
+
+    private boolean memeIdIsLegacy(String memeId) {
+        return memeId != null && memeId.startsWith("legacy-");
+    }
+
+    private String textOrFallback(Object value, String fallback) {
+        String text = text(value);
+        return text == null ? fallback : text;
+    }
+
+    private String text(Object value) {
+        if (value == null) {
+            return null;
+        }
+        String text = String.valueOf(value).trim();
+        return text.isEmpty() ? null : text;
     }
 
     private ActivityModuleInfo toInfo(ActivityModule module) {
@@ -311,6 +379,11 @@ public class ActivityService {
 
     private ActivityInstance getInstance(Long instanceId) {
         return activityInstanceRepository.findById(instanceId)
+                .orElseThrow(() -> new IllegalArgumentException("Activity instance not found: " + instanceId));
+    }
+
+    private ActivityInstance getInstanceForUpdate(Long instanceId) {
+        return activityInstanceRepository.findByIdForUpdate(instanceId)
                 .orElseThrow(() -> new IllegalArgumentException("Activity instance not found: " + instanceId));
     }
 
@@ -436,7 +509,7 @@ public class ActivityService {
     private Map<String, Object> photoChallengeConfig(MultiValueMap<String, String> form) {
         Map<String, Object> config = new LinkedHashMap<>();
         config.put("title", firstOrDefault(form, "title", "Мем-челлендж"));
-        config.put("instructions", firstOrDefault(form, "instructions", "Получи мем и придумай подпись про праздник."));
+        config.put("instructions", firstOrDefault(form, "instructions", "Крути рулетку: тебе выпадет мем-картинка, которую нужно повторить на фото."));
         config.put("memes", memeTemplates(form));
         config.put("showGallery", checked(form, "showGallery"));
         config.put("allowVoting", checked(form, "allowVoting"));
@@ -464,7 +537,7 @@ public class ActivityService {
             meme.put("name", name);
             meme.put("region", firstText(valueAt(regions, i), "global"));
             meme.put("imageUrl", firstText(valueAt(imageUrls, i), ""));
-            meme.put("prompt", firstText(valueAt(prompts, i), "Придумай подпись"));
+            meme.put("prompt", firstText(valueAt(prompts, i), "Повтори позу, эмоцию или сцену с картинки"));
             meme.put("accent", color(valueAt(accents, i), colorForIndex(i)));
             meme.put("emoji", firstText(valueAt(emojis, i), "😂"));
             memes.add(meme);

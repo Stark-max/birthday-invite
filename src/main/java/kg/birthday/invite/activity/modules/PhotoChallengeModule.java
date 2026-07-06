@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Component
 public class PhotoChallengeModule implements ActivityModule {
@@ -30,7 +31,7 @@ public class PhotoChallengeModule implements ActivityModule {
 
     @Override
     public String getDescription() {
-        return "Гости получают уникальные мем-шаблоны, придумывают подписи и голосуют за лучшие варианты.";
+        return "Гости крутят мем-рулетку и получают уникальную картинку, которую нужно повторить.";
     }
 
     @Override
@@ -42,7 +43,7 @@ public class PhotoChallengeModule implements ActivityModule {
     public Map<String, Object> getDefaultConfig() {
         Map<String, Object> config = new LinkedHashMap<>();
         config.put("title", "Мем-челлендж");
-        config.put("instructions", "Получи мем, придумай подпись про праздник и собери голоса гостей.");
+        config.put("instructions", "Крути рулетку: тебе выпадет мем-картинка, которую нужно повторить на фото.");
         config.put("memes", defaultMemes());
         config.put("showGallery", true);
         config.put("allowVoting", true);
@@ -89,10 +90,10 @@ public class PhotoChallengeModule implements ActivityModule {
             return ActivityResult.error("Все мемы уже разобрали. Добавьте новые шаблоны в админке.");
         }
 
-        int index = Math.floorMod((int) (guestId * 31 + usedIds.size() * 17), available.size());
+        int index = ThreadLocalRandom.current().nextInt(available.size());
         Map<String, Object> meme = available.get(index);
         Map<String, Object> data = baseMemeData("assign", guestId, meme);
-        return ActivityResult.success("Тебе выпал мем: " + meme.get("name"), 0, data);
+        return ActivityResult.success("Тебе выпал мем: " + meme.get("name") + ". Повтори его на фото.", 0, data);
     }
 
     private ActivityResult submitCaption(Map<String, Object> config, Map<String, Object> action, List<ActivityResultEntity> previousResults) {
@@ -101,25 +102,25 @@ public class PhotoChallengeModule implements ActivityModule {
             return ActivityResult.error("Гость не найден.");
         }
         if (alreadySubmitted(previousResults, guestId)) {
-            return ActivityResult.error("Ты уже отправил(а) подпись к своему мему.");
+            return ActivityResult.error("Ты уже отправил(а) результат по своему мему.");
         }
         Optional<Map<String, Object>> assignment = findOwnAssignment(previousResults, guestId);
         if (assignment.isEmpty()) {
-            return ActivityResult.error("Сначала получи мем-карточку.");
+            return ActivityResult.error("Сначала прокрути мем-рулетку и получи карточку.");
         }
         String caption = text(action.get("caption"));
         if (caption == null || caption.length() < 3) {
-            return ActivityResult.error("Добавьте подпись минимум из 3 символов.");
+            return ActivityResult.error("Добавьте короткий комментарий минимум из 3 символов.");
         }
         if (caption.length() > 180) {
-            return ActivityResult.error("Подпись должна быть не длиннее 180 символов.");
+            return ActivityResult.error("Комментарий должен быть не длиннее 180 символов.");
         }
 
         Map<String, Object> data = new LinkedHashMap<>(assignment.get());
         data.put("action", "submit");
         data.put("caption", caption);
         data.put("scoreGuestId", guestId);
-        return ActivityResult.success("Мем отправлен: " + caption, points(config, "pointsForCaption", 5), data);
+        return ActivityResult.success("Повтор мема отправлен: " + caption, points(config, "pointsForCaption", 5), data);
     }
 
     private ActivityResult vote(Map<String, Object> config, Map<String, Object> action, List<ActivityResultEntity> previousResults) {
@@ -163,7 +164,7 @@ public class PhotoChallengeModule implements ActivityModule {
         data.put("memeId", memeId(meme));
         data.put("memeName", textOrFallback(meme.get("name"), "Мем"));
         data.put("memeRegion", textOrFallback(meme.get("region"), "global"));
-        data.put("memePrompt", textOrFallback(meme.get("prompt"), "Придумай подпись"));
+        data.put("memePrompt", textOrFallback(meme.get("prompt"), "Повтори позу, эмоцию или сцену с картинки"));
         data.put("memeImageUrl", textOrFallback(meme.get("imageUrl"), ""));
         data.put("memeAccent", textOrFallback(meme.get("accent"), "#ffd166"));
         data.put("memeEmoji", textOrFallback(meme.get("emoji"), "😂"));
@@ -253,11 +254,7 @@ public class PhotoChallengeModule implements ActivityModule {
         }
         List<String> legacyChallenges = strings(config.get("challenges"));
         if (!legacyChallenges.isEmpty()) {
-            List<Map<String, Object>> legacy = new ArrayList<>();
-            for (int i = 0; i < legacyChallenges.size(); i++) {
-                legacy.add(meme("legacy-" + (i + 1), legacyChallenges.get(i), "legacy", "Придумай подпись", "", "#ffd166", "📸"));
-            }
-            return legacy;
+            return defaultMemes();
         }
         return List.of();
     }
@@ -269,7 +266,7 @@ public class PhotoChallengeModule implements ActivityModule {
         meme.put("id", id == null ? slug(name) : id);
         meme.put("name", name);
         meme.put("region", textOrFallback(input.get("region"), "global"));
-        meme.put("prompt", textOrFallback(input.get("prompt"), "Придумай подпись"));
+        meme.put("prompt", textOrFallback(input.get("prompt"), "Повтори позу, эмоцию или сцену с картинки"));
         meme.put("imageUrl", textOrFallback(input.get("imageUrl"), ""));
         meme.put("accent", textOrFallback(input.get("accent"), "#ffd166"));
         meme.put("emoji", textOrFallback(input.get("emoji"), "😂"));
@@ -335,56 +332,56 @@ public class PhotoChallengeModule implements ActivityModule {
 
     private static List<Map<String, Object>> defaultMemes() {
         return List.of(
-                meme("drake-hotline-bling", "Drake Hotline Bling", "US", "Что выбирает именинник?", "", "#f6c453", "🎧"),
-                meme("distracted-boyfriend", "Distracted Boyfriend", "US", "Кто от чего отвлёкся на вечеринке?", "", "#f28c8c", "👀"),
-                meme("two-buttons", "Two Buttons", "US", "Два сложных выбора гостя.", "", "#7bb7ff", "🔘"),
-                meme("woman-yelling-at-cat", "Woman Yelling at Cat", "US", "Спор гостя и кота о празднике.", "", "#f7a6c1", "🐱"),
-                meme("change-my-mind", "Change My Mind", "US", "Самое спорное мнение про вечеринку.", "", "#72c6a1", "🪧"),
-                meme("expanding-brain", "Expanding Brain", "US", "Уровни гениальности гостей.", "", "#9f8cff", "🧠"),
-                meme("this-is-fine", "This Is Fine", "US", "Когда всё идёт не по плану, но праздник продолжается.", "", "#ff8b55", "🔥"),
-                meme("one-does-not-simply", "One Does Not Simply", "US", "Что нельзя просто так сделать на дне рождения?", "", "#a58b6f", "💍"),
-                meme("success-kid", "Success Kid", "US", "Маленькая победа гостя.", "", "#6ec6ff", "🏆"),
-                meme("bad-luck-brian", "Bad Luck Brian", "US", "Самый неловкий сценарий вечера.", "", "#dd6b6b", "😬"),
-                meme("grumpy-cat", "Grumpy Cat", "US", "Гость, которому всё не нравится.", "", "#b7b0a6", "😾"),
-                meme("first-world-problems", "First World Problems", "US", "Драматичная проблема праздника.", "", "#8fb3ff", "💅"),
-                meme("ancient-aliens", "Ancient Aliens", "US", "Необъяснимая теория про именинника.", "", "#bfa36f", "👽"),
-                meme("mocking-spongebob", "Mocking SpongeBob", "US", "Передразни фразу с вечеринки.", "", "#ffe45c", "🧽"),
-                meme("surprised-pikachu", "Surprised Pikachu", "US", "Когда очевидное стало сюрпризом.", "", "#ffd64d", "⚡"),
-                meme("roll-safe", "Roll Safe", "US", "Гениальный лайфхак гостя.", "", "#4fb3a3", "☝"),
-                meme("is-this-a-pigeon", "Is This a Pigeon?", "US", "Перепутай предмет на празднике.", "", "#8fd3ff", "🦋"),
-                meme("hide-the-pain-harold", "Hide the Pain Harold", "US", "Улыбка, когда всё пошло странно.", "", "#f1b181", "🙂"),
-                meme("left-exit-12-off-ramp", "Left Exit 12 Off Ramp", "US", "Резкий поворот планов.", "", "#79b7ff", "↩"),
-                meme("galaxy-brain", "Galaxy Brain", "US", "Самая космическая идея вечера.", "", "#7d6bff", "🌌"),
-                meme("doge", "Doge", "US", "Very party. Such birthday.", "", "#e4bc64", "🐕"),
-                meme("chad-vs-virgin", "Chad vs Virgin", "US", "Два типа гостей.", "", "#9bcf6f", "💪"),
-                meme("trade-offer", "Trade Offer", "US", "Сделка гостя с именинником.", "", "#5db7de", "🤝"),
-                meme("bernie-mittens", "Bernie Mittens", "US", "Гость, который пришёл просто посидеть.", "", "#8aa4bd", "🧤"),
-                meme("uno-draw-25", "UNO Draw 25", "US", "Когда легче взять 25 карт.", "", "#ff6b6b", "🃏"),
-                meme("zhdun", "Ждун", "CIS", "Кого или чего все ждут на празднике?", "", "#c7b8a8", "⏳"),
-                meme("preved-medved", "Превед, медвед", "CIS", "Самое неожиданное приветствие гостя.", "", "#c58c62", "👋"),
-                meme("boromir-nelzya-prosto-tak-vzyat", "Нельзя просто так взять и...", "CIS", "Что нельзя просто так взять и сделать?", "", "#8b6f5a", "🛡"),
-                meme("vzhuh", "Вжух", "CIS", "Что магически изменилось на вечеринке?", "", "#b57cff", "✨"),
-                meme("natalya-morskaya-pehota", "Наталья, морская пехота", "CIS", "Самый боевой тост вечера.", "", "#5b94b8", "⚓"),
-                meme("ya-uznayu-ego-iz-tysyachi", "Я узнаю его из тысячи", "CIS", "Как узнать именинника из тысячи?", "", "#f2a65a", "🔎"),
-                meme("a-che-vsmysle", "А чё, в смысле?", "CIS", "Реакция на внезапный конкурс.", "", "#f0c987", "🤨"),
-                meme("nu-davay-rasskazhi", "Ну давай, расскажи", "CIS", "Когда гость ждёт объяснений.", "", "#b9a7ff", "🧐"),
-                meme("eto-fiasko-bratan", "Это фиаско, братан", "CIS", "План, который провалился красиво.", "", "#8ecae6", "🤦"),
-                meme("kak-tebe-takoe-ilon-mask", "Как тебе такое, Илон Маск?", "CIS", "Изобретение гостей на празднике.", "", "#9ad3bc", "🚀"),
-                meme("zhirno", "Жирно", "CIS", "Самая щедрая идея вечера.", "", "#ffd166", "👌"),
-                meme("omsk-bird", "Омская птица", "CIS", "Абсурдный поворот сюжета.", "", "#6d8ea0", "🌀"),
-                meme("kot-v-shoke", "Кот в шоке", "CIS", "Реакция кота на конкурс.", "", "#f6b6c8", "🙀"),
-                meme("spasibo-kep", "Спасибо, кэп", "CIS", "Самое очевидное наблюдение.", "", "#7fc8a9", "🧢"),
-                meme("ruki-bazuki", "Руки-базуки", "CIS", "Сила гостя после торта.", "", "#ff9f7a", "💪"),
-                meme("ded-inside", "Дед инсайд", "CIS", "Драматичный внутренний монолог.", "", "#8d99ae", "🖤"),
-                meme("kotleta-s-pyureshkoy", "Котлета с пюрешкой", "CIS", "Самое домашнее желание.", "", "#e9c46a", "🍽"),
-                meme("chebupeli", "Чебупели", "CIS", "Странный, но важный выбор.", "", "#f4a261", "🥟"),
-                meme("shrek-russian", "Шрек в СНГ", "CIS", "Болотная мудрость праздника.", "", "#98c379", "💚"),
-                meme("nu-pogodi", "Ну, погоди!", "CIS", "Кто кого догоняет на вечеринке?", "", "#a3d5ff", "🐺"),
-                meme("cheburashka", "Чебурашка", "CIS", "Самый милый гость вечера.", "", "#c08b5c", "🧡"),
-                meme("leopold", "Ребята, давайте жить дружно", "CIS", "Мирный мем для спорящих гостей.", "", "#f5b971", "☮"),
-                meme("masha-medved", "Маша и Медведь", "CIS", "Энергия гостя, которого не остановить.", "", "#ff8fab", "🎀"),
-                meme("dobry-vecher", "Добрый вечер", "CIS", "Самое эпичное появление.", "", "#4d96ff", "🌙"),
-                meme("normalno-delai", "Нормально делай", "CIS", "Совет организатору от эксперта.", "", "#80ed99", "✅")
+                meme("drake-hotline-bling", "Drake Hotline Bling", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/30b1gx.jpg", "#f6c453", "🖼"),
+                meme("two-buttons", "Two Buttons", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/1g8my4.jpg", "#7bb7ff", "🖼"),
+                meme("distracted-boyfriend", "Distracted Boyfriend", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/1ur9b0.jpg", "#f28c8c", "🖼"),
+                meme("uno-draw-25-cards", "UNO Draw 25 Cards", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/3lmzyx.jpg", "#ff6b6b", "🖼"),
+                meme("bernie-i-am-once-again-asking-for-your-support", "Bernie I Am Once Again Asking For Your Support", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/3oevdk.jpg", "#8aa4bd", "🖼"),
+                meme("left-exit-12-off-ramp", "Left Exit 12 Off Ramp", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/22bdq6.jpg", "#79b7ff", "🖼"),
+                meme("anakin-padme-4-panel", "Anakin Padme 4 Panel", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/5c7lwq.png", "#ffd166", "🖼"),
+                meme("epic-handshake", "Epic Handshake", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/28j0te.jpg", "#5db7de", "🖼"),
+                meme("always-has-been", "Always Has Been", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/46e43q.png", "#7d6bff", "🖼"),
+                meme("running-away-balloon", "Running Away Balloon", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/261o3j.jpg", "#f7a6c1", "🖼"),
+                meme("grus-plan", "Gru's Plan", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/26jxvz.jpg", "#f6c453", "🖼"),
+                meme("waiting-skeleton", "Waiting Skeleton", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/2fm6x.jpg", "#c7b8a8", "🖼"),
+                meme("sad-pablo-escobar", "Sad Pablo Escobar", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/1c1uej.jpg", "#8d99ae", "🖼"),
+                meme("disaster-girl", "Disaster Girl", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/23ls.jpg", "#ff8b55", "🖼"),
+                meme("x-x-everywhere", "X, X Everywhere", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/1ihzfe.jpg", "#9f8cff", "🖼"),
+                meme("change-my-mind", "Change My Mind", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/24y43o.jpg", "#72c6a1", "🖼"),
+                meme("batman-slapping-robin", "Batman Slapping Robin", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/9ehk.jpg", "#dd6b6b", "🖼"),
+                meme("woman-yelling-at-cat", "Woman Yelling At Cat", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/345v97.jpg", "#f7a6c1", "🖼"),
+                meme("mocking-spongebob", "Mocking Spongebob", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/1otk96.jpg", "#ffe45c", "🖼"),
+                meme("ancient-aliens", "Ancient Aliens", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/26am.jpg", "#bfa36f", "🖼"),
+                meme("trade-offer", "Trade Offer", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/54hjww.jpg", "#5db7de", "🖼"),
+                meme("yall-got-any-more-of-that", "Y'all Got Any More Of That", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/21uy0f.jpg", "#4fb3a3", "🖼"),
+                meme("expanding-brain", "Expanding Brain", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/1jwhww.jpg", "#9f8cff", "🖼"),
+                meme("absolute-cinema", "Absolute Cinema", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/8d317n.png", "#2c2825", "🖼"),
+                meme("bike-fall", "Bike Fall", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/1b42wl.jpg", "#ff9f7a", "🖼"),
+                meme("bernie-sanders-once-again-asking", "Bernie Sanders Once Again Asking", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/3pdf2w.png", "#8aa4bd", "🖼"),
+                meme("buff-doge-vs-cheems", "Buff Doge vs. Cheems", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/43a45p.png", "#9bcf6f", "🖼"),
+                meme("marked-safe-from", "Marked Safe From", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/2odckz.jpg", "#7fc8a9", "🖼"),
+                meme("one-does-not-simply", "One Does Not Simply", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/1bij.jpg", "#a58b6f", "🖼"),
+                meme("empire-state-building-climbers", "Empire State Building climbers", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/avnxpz.png", "#6ec6ff", "🖼"),
+                meme("zero-days-without-lenny-simpsons", "0 days without (Lenny, Simpsons)", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/72epa9.png", "#f1b181", "🖼"),
+                meme("is-this-a-pigeon", "Is This A Pigeon", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/1o00in.jpg", "#8fd3ff", "🖼"),
+                meme("mother-ignoring-kid-drowning-in-a-pool", "Mother Ignoring Kid Drowning In A Pool", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/46hhvr.jpg", "#79b7ff", "🖼"),
+                meme("tuxedo-winnie-the-pooh", "Tuxedo Winnie The Pooh", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/2ybua0.png", "#f6c453", "🖼"),
+                meme("you-guys-are-getting-paid", "You Guys are Getting Paid", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/2xscjb.png", "#c9a84c", "🖼"),
+                meme("this-is-fine", "This Is Fine", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/wxica.jpg", "#ff8b55", "🖼"),
+                meme("theyre-the-same-picture", "They're The Same Picture", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/2za3u1.jpg", "#8fb3ff", "🖼"),
+                meme("squidward-window", "Squidward window", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/145qvv.jpg", "#72c6a1", "🖼"),
+                meme("megamind-peeking", "Megamind peeking", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/64sz4u.png", "#7d6bff", "🖼"),
+                meme("this-is-where-id-put-my-trophy-if-i-had-one", "This Is Where I'd Put My Trophy If I Had One", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/1wz1x.jpg", "#ffd166", "🖼"),
+                meme("monkey-puppet", "Monkey Puppet", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/2gnnjh.jpg", "#c08b5c", "🖼"),
+                meme("oprah-you-get-a", "Oprah You Get A", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/gtj5t.jpg", "#c07080", "🖼"),
+                meme("clown-applying-makeup", "Clown Applying Makeup", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/38el31.jpg", "#f28c8c", "🖼"),
+                meme("i-bet-hes-thinking-about-other-women", "I Bet He's Thinking About Other Women", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/1tl71a.jpg", "#b9a7ff", "🖼"),
+                meme("boardroom-meeting-suggestion", "Boardroom Meeting Suggestion", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/m78d.jpg", "#5db7ff", "🖼"),
+                meme("imagination-spongebob", "Imagination Spongebob", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/3i7p.jpg", "#ffe45c", "🖼"),
+                meme("hide-the-pain-harold", "Hide the Pain Harold", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/gk5el.jpg", "#f1b181", "🖼"),
+                meme("pawn-stars-best-i-can-do", "Pawn Stars Best I Can Do", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/19vcz0.jpg", "#bfa36f", "🖼"),
+                meme("bell-curve", "Bell Curve", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/8tw3vb.png", "#7d9b76", "🖼"),
+                meme("where-monkey", "where monkey", "Imgflip", "Повтори позу, эмоцию или композицию этого мема.", "https://i.imgflip.com/58eyvu.png", "#9b7dc0", "🖼")
         );
     }
 

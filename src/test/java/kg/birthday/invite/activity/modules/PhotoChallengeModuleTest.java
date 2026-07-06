@@ -20,6 +20,8 @@ class PhotoChallengeModuleTest {
         List<?> memes = (List<?>) module.getDefaultConfig().get("memes");
 
         assertThat(memes).hasSize(50);
+        assertThat(memes)
+                .allSatisfy(item -> assertThat((String) ((Map<?, ?>) item).get("imageUrl")).startsWith("https://i.imgflip.com/"));
     }
 
     @Test
@@ -40,6 +42,7 @@ class PhotoChallengeModuleTest {
         assertThat(first.isSuccess()).isTrue();
         assertThat(second.isSuccess()).isTrue();
         assertThat(second.getData().get("memeId")).isNotEqualTo(first.getData().get("memeId"));
+        assertThat((String) first.getData().get("memeImageUrl")).startsWith("https://i.imgflip.com/");
     }
 
     @Test

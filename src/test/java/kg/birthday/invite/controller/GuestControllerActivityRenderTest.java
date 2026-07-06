@@ -70,7 +70,7 @@ class GuestControllerActivityRenderTest {
         ActivityInstance photo = activity(10L, event, "photo-challenge", "Мем-челлендж",
                 Map.of(
                         "title", "Мем-челлендж",
-                        "instructions", "Придумай подпись",
+                        "instructions", "Повтори картинку",
                         "memes", List.of(Map.of(
                                 "id", "drake",
                                 "name", "Drake Hotline Bling",
@@ -105,6 +105,8 @@ class GuestControllerActivityRenderTest {
         mockMvc.perform(get("/invite/abc12345"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("challenge-result-10")))
+                .andExpect(content().string(containsString("Крутить рулетку")))
+                .andExpect(content().string(containsString("meme-draw-10")))
                 .andExpect(content().string(not(containsString("quiz-root-10"))))
                 .andExpect(content().string(containsString("quiz-root-11")))
                 .andExpect(content().string(containsString("effect-spring")))
