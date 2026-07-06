@@ -173,6 +173,37 @@ class ActivityServiceFormConfigTest {
         assertThat(views.get(0).instance()).isSameAs(disabled);
     }
 
+    @Test
+    void legacyPhotoChallengeConfigRendersAsMemeChallenge() {
+        ActivityInstance legacy = instance("photo-challenge");
+        legacy.setDisplayName("Фото-челлендж");
+        legacy.setConfig(new java.util.LinkedHashMap<>(Map.of(
+                "title", "Фото-челлендж",
+                "challenges", List.of("Сделай фото"),
+                "allowVoting", true,
+                "showGallery", true
+        )));
+        when(activityInstanceRepository.findAllByEventIdAndEnabledTrueOrderBySortOrderAsc(10L)).thenReturn(List.of(legacy));
+
+        List<kg.birthday.invite.dto.ActivityView> views = activityService.getEnabledActivityViews(10L);
+
+        assertThat(views).hasSize(1);
+        assertThat(views.get(0).instance().getDisplayName()).isEqualTo("Мем-челлендж");
+        assertThat(views.get(0).instance().getConfig()).containsEntry("title", "Мем-челлендж");
+        assertThat((List<?>) views.get(0).instance().getConfig().get("memes")).hasSize(1);
+    }
+
+    @Test
+    void enablingAlreadyEnabledActivityReturnsExistingInstance() {
+        ActivityInstance existing = instance("photo-challenge");
+        when(activityInstanceRepository.findFirstByEventIdAndModuleSlugAndEnabledTrue(10L, "photo-challenge"))
+                .thenReturn(Optional.of(existing));
+
+        ActivityInstance result = activityService.enableActivity(10L, "photo-challenge", "Мем-челлендж");
+
+        assertThat(result).isSameAs(existing);
+    }
+
     private static ActivityInstance instance(String moduleSlug) {
         Event event = new Event();
         event.setId(10L);

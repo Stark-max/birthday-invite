@@ -27,13 +27,17 @@
     <section class="card stack">
         <h2>Каталог</h2>
         <div class="grid">
-            <form class="card stack" method="post" th:each="module : ${modules}" th:action="@{/admin/activities/enable}">
+            <form class="card stack activity-module-card" method="post" th:each="module : ${modules}"
+                  th:with="connected=${#lists.contains(enabledModuleSlugs, module.slug)}"
+                  th:classappend="${connected} ? ' activity-module-connected'"
+                  th:action="@{/admin/activities/enable}">
                 <div class="activity-icon" th:text="${module.icon}">A</div>
                 <h3 th:text="${module.name}">Модуль</h3>
                 <p class="muted" th:text="${module.description}">Описание</p>
+                <span class="status accepted" th:if="${connected}">Уже подключено</span>
                 <input type="hidden" name="slug" th:value="${module.slug}">
-                <input name="displayName" th:value="${module.name}">
-                <button type="submit">Подключить</button>
+                <input name="displayName" th:value="${module.name}" th:disabled="${connected}">
+                <button type="submit" th:disabled="${connected}" th:text="${connected ? 'Подключено' : 'Подключить'}">Подключить</button>
             </form>
         </div>
     </section>

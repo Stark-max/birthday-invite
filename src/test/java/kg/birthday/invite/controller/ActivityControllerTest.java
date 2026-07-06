@@ -111,7 +111,14 @@ class ActivityControllerTest {
         event.setOwnerAdmin(user);
         when(adminSessionService.currentEvent(org.mockito.ArgumentMatchers.any()))
                 .thenReturn(java.util.Optional.of(event));
-        when(activityService.getAvailableModules()).thenReturn(List.of());
+        when(activityService.getAvailableModules()).thenReturn(List.of(new ActivityModuleInfo(
+                "wheel",
+                "Wheel",
+                "Description",
+                "A",
+                "fragments/activity/wheel-guest",
+                "fragments/activity/wheel-admin"
+        )));
         when(activityService.getEnabledActivityViews(1L)).thenReturn(List.of(view(wheel)));
         when(activityService.getDisabledActivityViews(1L)).thenReturn(List.of(view(archivedWheel)));
         when(activityService.getEventLeaderboard(1L)).thenReturn(List.of());
@@ -120,6 +127,8 @@ class ActivityControllerTest {
         MockHttpSession session = new MockHttpSession();
         mockMvc.perform(get("/admin/activities").session(session))
                 .andExpect(status().isOk())
+                .andExpect(content().string(containsString("activity-module-connected")))
+                .andExpect(content().string(containsString("disabled=\"disabled\"")))
                 .andExpect(content().string(containsString("name=\"segmentTexts\"")))
                 .andExpect(content().string(containsString("wheel-segment-template-5")))
                 .andExpect(content().string(containsString("Отключённые / архив")))

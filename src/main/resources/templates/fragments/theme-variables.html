@@ -6,20 +6,20 @@
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=DM+Serif+Display&family=Lora:wght@400;600&family=Orbitron:wght@500;700&family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:wght@500;700&family=Quicksand:wght@400;600;700&family=Space+Grotesk:wght@400;600;700&family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
     <style th:inline="css">
         :root {
-            --color-bg: [(${theme['colorBg']})];
-            --color-bg-card: [(${theme['colorBgCard']})];
-            --color-text: [(${theme['colorText']})];
-            --color-text-secondary: [(${theme['colorTextSecondary']})];
-            --color-accent: [(${theme['colorAccent']})];
-            --color-accent-light: [(${theme['colorAccentLight']})];
-            --color-accent-dark: [(${theme['colorAccentDark']})];
-            --color-success: [(${theme['colorSuccess']})];
-            --color-danger: [(${theme['colorDanger']})];
-            --font-display: '[(${theme['fontDisplay']})]', serif;
-            --font-body: '[(${theme['fontBody']})]', sans-serif;
-            --border-radius: [(${theme['borderRadius']})];
-            --card-shadow: [(${theme['cardShadow']})];
-            --background-gradient: [(${theme['backgroundGradient']})];
+            --color-bg: [(${theme == null || theme['colorBg'] == null ? '#FBF7F0' : theme['colorBg']})];
+            --color-bg-card: [(${theme == null || theme['colorBgCard'] == null ? '#FFFFFF' : theme['colorBgCard']})];
+            --color-text: [(${theme == null || theme['colorText'] == null ? '#2C2825' : theme['colorText']})];
+            --color-text-secondary: [(${theme == null || theme['colorTextSecondary'] == null ? '#4A4541' : theme['colorTextSecondary']})];
+            --color-accent: [(${theme == null || theme['colorAccent'] == null ? '#C9A84C' : theme['colorAccent']})];
+            --color-accent-light: [(${theme == null || theme['colorAccentLight'] == null ? '#E8D5A3' : theme['colorAccentLight']})];
+            --color-accent-dark: [(${theme == null || theme['colorAccentDark'] == null ? '#A07D2E' : theme['colorAccentDark']})];
+            --color-success: [(${theme == null || theme['colorSuccess'] == null ? '#7D9B76' : theme['colorSuccess']})];
+            --color-danger: [(${theme == null || theme['colorDanger'] == null ? '#C07080' : theme['colorDanger']})];
+            --font-display: '[(${theme == null || theme['fontDisplay'] == null ? 'Cormorant Garamond' : theme['fontDisplay']})]', serif;
+            --font-body: '[(${theme == null || theme['fontBody'] == null ? 'Outfit' : theme['fontBody']})]', sans-serif;
+            --border-radius: [(${theme == null || theme['borderRadius'] == null ? '16px' : theme['borderRadius']})];
+            --card-shadow: [(${theme == null || theme['cardShadow'] == null ? 'none' : theme['cardShadow']})];
+            --background-gradient: [(${theme == null || theme['backgroundGradient'] == null ? 'none' : theme['backgroundGradient']})];
         }
     </style>
 </th:block>

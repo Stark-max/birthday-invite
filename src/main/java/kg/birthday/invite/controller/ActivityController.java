@@ -36,9 +36,13 @@ public class ActivityController {
         if (event == null) {
             return accessRedirect(session);
         }
+        List<kg.birthday.invite.dto.ActivityView> enabledActivityViews = activityService.getEnabledActivityViews(event.getId());
         model.addAttribute("event", event);
         model.addAttribute("modules", activityService.getAvailableModules());
-        model.addAttribute("enabledActivityViews", activityService.getEnabledActivityViews(event.getId()));
+        model.addAttribute("enabledActivityViews", enabledActivityViews);
+        model.addAttribute("enabledModuleSlugs", enabledActivityViews.stream()
+                .map(view -> view.instance().getModuleSlug())
+                .toList());
         model.addAttribute("disabledActivityViews", activityService.getDisabledActivityViews(event.getId()));
         model.addAttribute("leaderboard", activityService.getEventLeaderboard(event.getId()));
         model.addAttribute("theme", themeService.getGlobalTheme(event.getId()));

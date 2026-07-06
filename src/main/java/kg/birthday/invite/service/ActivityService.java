@@ -27,6 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -71,8 +72,9 @@ public class ActivityService {
     @Transactional
     public ActivityInstance enableActivity(Long eventId, String slug, String displayName) {
         ActivityModule module = getModule(slug);
-        if (activityInstanceRepository.existsByEventIdAndModuleSlugAndEnabledTrue(eventId, slug)) {
-            throw new IllegalStateException("Activity is already enabled: " + slug);
+        Optional<ActivityInstance> existing = activityInstanceRepository.findFirstByEventIdAndModuleSlugAndEnabledTrue(eventId, slug);
+        if (existing.isPresent()) {
+            return existing.get();
         }
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new IllegalArgumentException("Event not found: " + eventId));
@@ -214,6 +216,7 @@ public class ActivityService {
     private List<ActivityView> toViews(List<ActivityInstance> instances) {
         return instances.stream().map(instance -> {
             ActivityModule module = getModule(instance.getModuleSlug());
+            normalizeConfigForView(instance);
             List<ActivityResultEntity> results = getResults(instance.getId());
             Map<Long, Integer> pointsByGuest = results.stream()
                     .collect(Collectors.groupingBy(result -> result.getGuest().getId(), Collectors.summingInt(ActivityResultEntity::getPoints)));
@@ -236,6 +239,58 @@ public class ActivityService {
                     leader
             );
         }).toList();
+    }
+
+    private void normalizeConfigForView(ActivityInstance instance) {
+        if (!"photo-challenge".equals(instance.getModuleSlug())) {
+            return;
+        }
+        if (instance.getDisplayName() == null
+                || instance.getDisplayName().isBlank()
+                || "Фото-челлендж".equals(instance.getDisplayName())) {
+            instance.setDisplayName("Мем-челлендж");
+        }
+        Map<String, Object> config = instance.getConfig();
+        if (config == null) {
+            return;
+        }
+        if (config.get("memes") != null) {
+            normalizePhotoChallengeTitle(config);
+            return;
+        }
+        List<String> legacyChallenges = config.get("challenges") instanceof List<?> list
+                ? list.stream().map(String::valueOf).filter(value -> !value.isBlank()).toList()
+                : List.of();
+        if (legacyChallenges.isEmpty()) {
+            return;
+        }
+        Map<String, Object> normalized = new LinkedHashMap<>(config);
+        List<Map<String, Object>> memes = new java.util.ArrayList<>();
+        for (int i = 0; i < legacyChallenges.size(); i++) {
+            String name = legacyChallenges.get(i);
+            Map<String, Object> meme = new LinkedHashMap<>();
+            meme.put("id", "legacy-" + (i + 1));
+            meme.put("name", name);
+            meme.put("region", "legacy");
+            meme.put("imageUrl", "");
+            meme.put("prompt", "Придумай подпись");
+            meme.put("accent", colorForIndex(i));
+            meme.put("emoji", "📸");
+            memes.add(meme);
+        }
+        normalizePhotoChallengeTitle(normalized);
+        normalized.put("instructions", normalized.getOrDefault("instructions", "Получи мем и придумай подпись про праздник."));
+        normalized.put("memes", memes);
+        normalized.put("pointsForCaption", normalized.getOrDefault("pointsForCaption", 5));
+        normalized.put("pointsForVote", normalized.getOrDefault("pointsForVote", 1));
+        instance.setConfig(normalized);
+    }
+
+    private void normalizePhotoChallengeTitle(Map<String, Object> config) {
+        Object title = config.get("title");
+        if (title == null || String.valueOf(title).isBlank() || "Фото-челлендж".equals(String.valueOf(title))) {
+            config.put("title", "Мем-челлендж");
+        }
     }
 
     private ActivityModuleInfo toInfo(ActivityModule module) {

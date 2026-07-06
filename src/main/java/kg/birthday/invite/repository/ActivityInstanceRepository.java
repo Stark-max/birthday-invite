@@ -15,5 +15,7 @@ public interface ActivityInstanceRepository extends JpaRepository<ActivityInstan
 
     boolean existsByEventIdAndModuleSlugAndEnabledTrue(Long eventId, String moduleSlug);
 
+    Optional<ActivityInstance> findFirstByEventIdAndModuleSlugAndEnabledTrue(Long eventId, String moduleSlug);
+
     Optional<ActivityInstance> findByIdAndEventId(Long id, Long eventId);
 }

@@ -42,6 +42,22 @@
   box-shadow: 0 20px 42px rgba(91, 57, 24, 0.16);
 }
 
+.activity-module-card {
+  position: relative;
+}
+
+.activity-module-connected {
+  border-color: color-mix(in srgb, var(--color-success, #7D9B76), #ffffff 38%);
+  background:
+    linear-gradient(145deg, rgba(125, 155, 118, 0.16), rgba(255,255,255,0.9)),
+    var(--color-bg-card, #FFFFFF);
+}
+
+.activity-module-connected input,
+.activity-module-connected button {
+  opacity: 0.68;
+}
+
 .activity-card-header {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
