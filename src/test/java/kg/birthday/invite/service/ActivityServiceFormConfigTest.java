@@ -1,0 +1,171 @@
+package kg.birthday.invite.service;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import kg.birthday.invite.activity.modules.PhotoChallengeModule;
+import kg.birthday.invite.activity.modules.QuizModule;
+import kg.birthday.invite.activity.modules.TruthOrDareModule;
+import kg.birthday.invite.activity.modules.WheelOfFortuneModule;
+import kg.birthday.invite.activity.registry.ActivityRegistry;
+import kg.birthday.invite.entity.ActivityInstance;
+import kg.birthday.invite.entity.Event;
+import kg.birthday.invite.repository.ActivityInstanceRepository;
+import kg.birthday.invite.repository.ActivityResultRepository;
+import kg.birthday.invite.repository.EventRepository;
+import kg.birthday.invite.repository.GuestRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.util.LinkedMultiValueMap;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+class ActivityServiceFormConfigTest {
+
+    ActivityInstanceRepository activityInstanceRepository;
+    ActivityService activityService;
+
+    @BeforeEach
+    void setUp() {
+        activityInstanceRepository = mock(ActivityInstanceRepository.class);
+        ActivityResultRepository activityResultRepository = mock(ActivityResultRepository.class);
+        EventRepository eventRepository = mock(EventRepository.class);
+        GuestRepository guestRepository = mock(GuestRepository.class);
+        ActivityRegistry registry = new ActivityRegistry(List.of(
+                new WheelOfFortuneModule(),
+                new QuizModule(),
+                new PhotoChallengeModule(),
+                new TruthOrDareModule()
+        ));
+        activityService = new ActivityService(
+                registry,
+                activityInstanceRepository,
+                activityResultRepository,
+                eventRepository,
+                guestRepository,
+                new ObjectMapper()
+        );
+        when(activityInstanceRepository.save(any(ActivityInstance.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    }
+
+    @Test
+    void wheelFormBuildsWeightedSegmentsConfig() {
+        ActivityInstance instance = instance("wheel");
+        when(activityInstanceRepository.findById(1L)).thenReturn(Optional.of(instance));
+        LinkedMultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("displayName", "Колесо");
+        form.add("title", "Крути");
+        form.add("spinPerGuest", "2");
+        form.add("showHistory", "true");
+        form.add("segmentTexts", "Тост");
+        form.add("segmentColors", "#C9A84C");
+        form.add("segmentWeights", "3");
+        form.add("segmentTexts", "Танец");
+        form.add("segmentColors", "#7D9B76");
+        form.add("segmentWeights", "1");
+
+        ActivityInstance updated = activityService.updateActivityConfigFromForm(1L, form);
+
+        assertThat(updated.getDisplayName()).isEqualTo("Колесо");
+        assertThat(updated.getConfig()).containsEntry("title", "Крути");
+        assertThat(updated.getConfig()).containsEntry("spinPerGuest", 2);
+        assertThat((List<?>) updated.getConfig().get("segments")).hasSize(2);
+    }
+
+    @Test
+    void quizFormBuildsQuestionConfig() {
+        ActivityInstance instance = instance("quiz");
+        when(activityInstanceRepository.findById(1L)).thenReturn(Optional.of(instance));
+        LinkedMultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("displayName", "Викторина");
+        form.add("title", "Вопросы");
+        form.add("showCorrectAnswers", "true");
+        form.add("showLeaderboard", "true");
+        form.add("questionTexts", "Любимый цвет?");
+        form.add("questionTypes", "multiple_choice");
+        form.add("questionOptions", "Синий\nЗеленый");
+        form.add("questionCorrectAnswers", "2");
+        form.add("questionPoints", "7");
+
+        ActivityInstance updated = activityService.updateActivityConfigFromForm(1L, form);
+
+        List<?> questions = (List<?>) updated.getConfig().get("questions");
+        assertThat(questions).hasSize(1);
+        Map<?, ?> question = (Map<?, ?>) questions.get(0);
+        assertThat(question.get("text")).isEqualTo("Любимый цвет?");
+        assertThat(question.get("correctAnswer")).isEqualTo(1);
+        assertThat(question.get("points")).isEqualTo(7);
+    }
+
+    @Test
+    void photoChallengeFormBuildsChallengeConfig() {
+        ActivityInstance instance = instance("photo-challenge");
+        when(activityInstanceRepository.findById(1L)).thenReturn(Optional.of(instance));
+        LinkedMultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("title", "Фото");
+        form.add("showGallery", "true");
+        form.add("challengeTexts", "Селфи");
+        form.add("challengeTexts", "Групповое фото");
+
+        ActivityInstance updated = activityService.updateActivityConfigFromForm(1L, form);
+
+        assertThat(updated.getConfig()).containsEntry("title", "Фото");
+        assertThat(updated.getConfig()).containsEntry("showGallery", true);
+        assertThat(updated.getConfig()).containsEntry("allowVoting", false);
+        assertThat(updated.getConfig().get("challenges")).isEqualTo(List.of("Селфи", "Групповое фото"));
+    }
+
+    @Test
+    void truthOrDareFormBuildsCardListsConfig() {
+        ActivityInstance instance = instance("truth-or-dare");
+        when(activityInstanceRepository.findById(1L)).thenReturn(Optional.of(instance));
+        LinkedMultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("title", "Карточки");
+        form.add("allowGuestAdd", "true");
+        form.add("truthTexts", "Правда?");
+        form.add("dareTexts", "Действие!");
+
+        ActivityInstance updated = activityService.updateActivityConfigFromForm(1L, form);
+
+        assertThat(updated.getConfig()).containsEntry("title", "Карточки");
+        assertThat(updated.getConfig()).containsEntry("allowGuestAdd", true);
+        assertThat(updated.getConfig().get("truths")).isEqualTo(List.of("Правда?"));
+        assertThat(updated.getConfig().get("dares")).isEqualTo(List.of("Действие!"));
+    }
+
+    @Test
+    void disabledActivityViewsUseDisabledRepositoryRows() {
+        ActivityInstance disabled = instance("wheel");
+        disabled.setEnabled(false);
+        disabled.setConfig(new java.util.LinkedHashMap<>(Map.of(
+                "title", "Старое",
+                "mode", "prizes",
+                "segments", List.of(Map.of("text", "Архив", "color", "#C9A84C", "weight", 1)),
+                "spinPerGuest", 1,
+                "showHistory", true
+        )));
+        when(activityInstanceRepository.findAllByEventIdAndEnabledFalseOrderBySortOrderAsc(10L)).thenReturn(List.of(disabled));
+
+        List<kg.birthday.invite.dto.ActivityView> views = activityService.getDisabledActivityViews(10L);
+
+        assertThat(views).hasSize(1);
+        assertThat(views.get(0).instance()).isSameAs(disabled);
+    }
+
+    private static ActivityInstance instance(String moduleSlug) {
+        Event event = new Event();
+        event.setId(10L);
+        ActivityInstance instance = new ActivityInstance();
+        instance.setId(1L);
+        instance.setEvent(event);
+        instance.setModuleSlug(moduleSlug);
+        instance.setDisplayName("Old");
+        instance.setEnabled(true);
+        return instance;
+    }
+}

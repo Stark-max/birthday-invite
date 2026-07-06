@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="'День рождения ' + ${event.name}">День рождения</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <th:block th:replace="~{fragments/theme-variables :: theme-vars(${theme})}"></th:block>
+</head>
+<body>
+<main class="page page-narrow">
+    <section class="hero animate-in">
+        <div class="eyebrow">Персональное приглашение</div>
+        <h1>День рождения</h1>
+        <h2 th:text="${event.name}">Имя</h2>
+        <p class="muted" th:text="${#temporals.format(event.date, 'dd.MM.yyyy')}">01.01.2026</p>
+    </section>
+    <section class="card stack animate-in">
+        <p>Это приглашение персональное. Если у тебя есть ссылка, открой её, чтобы ответить.</p>
+        <p class="muted">Нет ссылки? Попроси её у именинника.</p>
+        <p class="muted" th:if="${event.contactInfo}" th:text="${event.contactInfo}">Контакт</p>
+    </section>
+    <p style="text-align:center;margin-top:28px">
+        <a th:href="@{/admin/login}">Управление</a>
+    </p>
+</main>
+</body>
+</html>

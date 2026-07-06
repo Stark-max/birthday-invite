@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="content(activity)">
+    <div class="activity-editor-grid">
+        <label>Название в гостевой странице
+            <input name="displayName" th:value="${activity.instance.displayName}">
+        </label>
+        <label>Заголовок фото-челленджа
+            <input name="title" th:value="${activity.instance.config['title']}">
+        </label>
+        <label class="checkbox-line">
+            <input name="showGallery" type="checkbox" value="true" th:checked="${activity.instance.config['showGallery'] != false}">
+            <span>Показывать галерею выполненных заданий</span>
+        </label>
+        <label class="checkbox-line">
+            <input name="allowVoting" type="checkbox" value="true" th:checked="${activity.instance.config['allowVoting'] != false}">
+            <span>Разрешить голосование +1</span>
+        </label>
+    </div>
+
+    <div class="activity-editor-section">
+        <div class="activity-editor-heading">
+            <strong>Фото-задания</strong>
+            <button class="secondary" type="button"
+                    th:onclick="|addActivityRow('photo-challenge-template-${activity.instance.id}', 'photo-challenges-${activity.instance.id}')|">Добавить задание</button>
+        </div>
+        <div class="activity-row-list" th:id="'photo-challenges-' + ${activity.instance.id}">
+            <div class="activity-editor-row single-field-row"
+                 th:each="challenge : ${activity.instance.config['challenges']}">
+                <input name="challengeTexts" th:value="${challenge}" placeholder="Например: селфи с именинником" required>
+                <button class="ghost danger" type="button" onclick="removeActivityRow(this)">Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <template th:id="'photo-challenge-template-' + ${activity.instance.id}">
+        <div class="activity-editor-row single-field-row">
+            <input name="challengeTexts" placeholder="Например: селфи с именинником" required>
+            <button class="ghost danger" type="button" onclick="removeActivityRow(this)">Удалить</button>
+        </div>
+    </template>
+</th:block>
+</html>

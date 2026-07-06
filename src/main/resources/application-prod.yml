@@ -1,0 +1,12 @@
+spring:
+  thymeleaf:
+    cache: true
+  jpa:
+    properties:
+      hibernate:
+        format_sql: false
+
+logging:
+  level:
+    root: WARN
+    kg.birthday.invite: INFO

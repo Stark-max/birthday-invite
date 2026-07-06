@@ -1,0 +1,12 @@
+:root {
+  --color-bg: #FBF7F0;
+  --color-bg-card: #FFFFFF;
+  --color-text: #2C2825;
+  --color-text-secondary: #4A4541;
+  --color-accent: #C9A84C;
+  --color-accent-light: #E8D5A3;
+  --color-accent-dark: #A07D2E;
+  --font-display: "Cormorant Garamond";
+  --font-body: "Outfit";
+  --border-radius: 16px;
+}

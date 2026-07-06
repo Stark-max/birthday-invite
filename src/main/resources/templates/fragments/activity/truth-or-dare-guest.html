@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="content(activity, guest)">
+    <div class="stack">
+        <div class="tod-card" th:id="'tod-result-' + ${activity.instance.id}">Выбери карточку</div>
+        <div class="split">
+            <button type="button" th:onclick="|playTruthOrDare(${activity.instance.id}, ${guest.id}, 'truth')|">Правда</button>
+            <button class="secondary" type="button" th:onclick="|playTruthOrDare(${activity.instance.id}, ${guest.id}, 'dare')|">Действие</button>
+        </div>
+        <form class="tod-add-form" th:if="${activity.instance.config['allowGuestAdd']}"
+              th:onsubmit="|addTruthOrDarePrompt(event, ${activity.instance.id}, ${guest.id})|">
+            <select th:id="'tod-add-choice-' + ${activity.instance.id}">
+                <option value="truth">Правда</option>
+                <option value="dare">Действие</option>
+            </select>
+            <input th:id="'tod-add-prompt-' + ${activity.instance.id}" placeholder="Своя карточка">
+            <button class="secondary" type="submit">Добавить</button>
+        </form>
+        <p class="muted" th:id="'tod-add-result-' + ${activity.instance.id}"></p>
+    </div>
+</th:block>
+</html>

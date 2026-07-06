@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="content(activity)">
+    <div class="activity-editor-grid">
+        <label>Название в гостевой странице
+            <input name="displayName" th:value="${activity.instance.displayName}">
+        </label>
+        <label>Заголовок активности
+            <input name="title" th:value="${activity.instance.config['title']}">
+        </label>
+        <label class="checkbox-line">
+            <input name="allowGuestAdd" type="checkbox" value="true" th:checked="${activity.instance.config['allowGuestAdd'] == true}">
+            <span>Гости могут добавлять свои карточки</span>
+        </label>
+    </div>
+
+    <div class="activity-editor-columns">
+        <div class="activity-editor-section">
+            <div class="activity-editor-heading">
+                <strong>Правда</strong>
+                <button class="secondary" type="button"
+                        th:onclick="|addActivityRow('truth-template-${activity.instance.id}', 'truth-list-${activity.instance.id}')|">Добавить</button>
+            </div>
+            <div class="activity-row-list" th:id="'truth-list-' + ${activity.instance.id}">
+                <div class="activity-editor-row single-field-row" th:each="truth : ${activity.instance.config['truths']}">
+                    <input name="truthTexts" th:value="${truth}" placeholder="Вопрос для правды" required>
+                    <button class="ghost danger" type="button" onclick="removeActivityRow(this)">Удалить</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="activity-editor-section">
+            <div class="activity-editor-heading">
+                <strong>Действие</strong>
+                <button class="secondary" type="button"
+                        th:onclick="|addActivityRow('dare-template-${activity.instance.id}', 'dare-list-${activity.instance.id}')|">Добавить</button>
+            </div>
+            <div class="activity-row-list" th:id="'dare-list-' + ${activity.instance.id}">
+                <div class="activity-editor-row single-field-row" th:each="dare : ${activity.instance.config['dares']}">
+                    <input name="dareTexts" th:value="${dare}" placeholder="Задание для действия" required>
+                    <button class="ghost danger" type="button" onclick="removeActivityRow(this)">Удалить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <template th:id="'truth-template-' + ${activity.instance.id}">
+        <div class="activity-editor-row single-field-row">
+            <input name="truthTexts" placeholder="Вопрос для правды" required>
+            <button class="ghost danger" type="button" onclick="removeActivityRow(this)">Удалить</button>
+        </div>
+    </template>
+    <template th:id="'dare-template-' + ${activity.instance.id}">
+        <div class="activity-editor-row single-field-row">
+            <input name="dareTexts" placeholder="Задание для действия" required>
+            <button class="ghost danger" type="button" onclick="removeActivityRow(this)">Удалить</button>
+        </div>
+    </template>
+</th:block>
+</html>

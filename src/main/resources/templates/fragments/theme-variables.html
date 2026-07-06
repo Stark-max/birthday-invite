@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="theme-vars(theme)">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=DM+Serif+Display&family=Lora:wght@400;600&family=Orbitron:wght@500;700&family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:wght@500;700&family=Quicksand:wght@400;600;700&family=Space+Grotesk:wght@400;600;700&family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
+    <style th:inline="css">
+        :root {
+            --color-bg: [(${theme['colorBg']})];
+            --color-bg-card: [(${theme['colorBgCard']})];
+            --color-text: [(${theme['colorText']})];
+            --color-text-secondary: [(${theme['colorTextSecondary']})];
+            --color-accent: [(${theme['colorAccent']})];
+            --color-accent-light: [(${theme['colorAccentLight']})];
+            --color-accent-dark: [(${theme['colorAccentDark']})];
+            --color-success: [(${theme['colorSuccess']})];
+            --color-danger: [(${theme['colorDanger']})];
+            --font-display: '[(${theme['fontDisplay']})]', serif;
+            --font-body: '[(${theme['fontBody']})]', sans-serif;
+            --border-radius: [(${theme['borderRadius']})];
+            --card-shadow: [(${theme['cardShadow']})];
+            --background-gradient: [(${theme['backgroundGradient']})];
+        }
+    </style>
+</th:block>
+</html>

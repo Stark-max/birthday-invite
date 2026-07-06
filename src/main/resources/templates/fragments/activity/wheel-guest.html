@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="content(activity, guest)">
+    <script type="application/json"
+            th:id="'activity-config-' + ${activity.instance.id}"
+            th:attr="data-wheel-config=${'wheel-' + activity.instance.id}"
+            th:utext="${activity.configJson}"></script>
+    <div class="wheel-stage">
+        <div class="wheel-frame">
+            <span class="wheel-pointer" aria-hidden="true"></span>
+            <canvas class="wheel-canvas" th:id="'wheel-' + ${activity.instance.id}" width="480" height="480"></canvas>
+        </div>
+    </div>
+    <div class="wheel-actions">
+        <button type="button" th:id="'wheel-button-' + ${activity.instance.id}" th:onclick="|spinWheel(${activity.instance.id}, ${guest.id})|">Крутить колесо</button>
+        <strong class="wheel-result" th:id="'wheel-result-' + ${activity.instance.id}"></strong>
+    </div>
+</th:block>
+</html>

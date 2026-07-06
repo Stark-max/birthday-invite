@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Активности</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="stylesheet" th:href="@{/css/activity.css}">
+    <th:block th:replace="~{fragments/theme-variables :: theme-vars(${theme})}"></th:block>
+</head>
+<body>
+<main class="page">
+    <header class="topbar">
+        <div>
+            <div class="brand">Активности</div>
+            <h1>Развлечения на празднике</h1>
+        </div>
+        <nav class="nav-links">
+            <a th:if="${session.adminRole == 'SUPER_ADMIN'}" th:href="@{/super-admin}">Супер-админ</a>
+            <a th:href="@{/admin}">Админка</a>
+            <a th:href="@{/admin/event}">Профиль события</a>
+            <a th:href="@{/admin/wishlist}">Вишлист</a>
+            <a th:href="@{/admin/themes}">Темы</a>
+        </nav>
+    </header>
+
+    <section class="card stack">
+        <h2>Каталог</h2>
+        <div class="grid">
+            <form class="card stack" method="post" th:each="module : ${modules}" th:action="@{/admin/activities/enable}">
+                <div class="activity-icon" th:text="${module.icon}">A</div>
+                <h3 th:text="${module.name}">Модуль</h3>
+                <p class="muted" th:text="${module.description}">Описание</p>
+                <input type="hidden" name="slug" th:value="${module.slug}">
+                <input name="displayName" th:value="${module.name}">
+                <button type="submit">Подключить</button>
+            </form>
+        </div>
+    </section>
+
+    <section class="card stack" style="margin-top:18px">
+        <h2>Подключённые</h2>
+        <div class="stack" th:each="activity : ${enabledActivityViews}">
+            <article class="card stack">
+                <div class="topbar" style="margin-bottom:0">
+                    <div>
+                        <h3 th:text="${activity.instance.displayName}">Активность</h3>
+                        <p class="muted">
+                            <span th:text="${activity.participantCount}">0</span>
+                            участников, лидер:
+                            <span th:text="${activity.leaderName}">—</span>
+                        </p>
+                    </div>
+                    <form method="post" th:action="@{/admin/activities/{id}/disable(id=${activity.instance.id})}">
+                        <button class="secondary" type="submit">Отключить</button>
+                    </form>
+                </div>
+                <form class="stack activity-config-form" method="post" th:action="@{/admin/activities/{id}/config(id=${activity.instance.id})}">
+                    <th:block th:if="${activity.instance.moduleSlug == 'wheel'}">
+                        <th:block th:replace="~{fragments/activity/wheel-admin :: content(${activity})}"></th:block>
+                    </th:block>
+                    <th:block th:if="${activity.instance.moduleSlug == 'quiz'}">
+                        <th:block th:replace="~{fragments/activity/quiz-admin :: content(${activity})}"></th:block>
+                    </th:block>
+                    <th:block th:if="${activity.instance.moduleSlug == 'photo-challenge'}">
+                        <th:block th:replace="~{fragments/activity/photo-challenge-admin :: content(${activity})}"></th:block>
+                    </th:block>
+                    <th:block th:if="${activity.instance.moduleSlug == 'truth-or-dare'}">
+                        <th:block th:replace="~{fragments/activity/truth-or-dare-admin :: content(${activity})}"></th:block>
+                    </th:block>
+                    <button type="submit">Сохранить настройки</button>
+                </form>
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th>Гость</th>
+                        <th>Очки</th>
+                        <th>Результат</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="result : ${activity.results}">
+                        <td th:text="${result.guest.name ?: result.guest.label}">Гость</td>
+                        <td th:text="${result.points}">0</td>
+                        <td th:text="${result.resultData}">data</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </article>
+        </div>
+        <p class="muted" th:if="${#lists.isEmpty(enabledActivityViews)}">Пока ничего не подключено.</p>
+    </section>
+
+    <section class="card stack" style="margin-top:18px" th:if="${!#lists.isEmpty(disabledActivityViews)}">
+        <div>
+            <h2>Отключённые / архив</h2>
+            <p class="muted">Эти записи сохранены для истории результатов и не показываются гостям.</p>
+        </div>
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Активность</th>
+                <th>Тип</th>
+                <th>Порядок</th>
+                <th>Статус</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="activity : ${disabledActivityViews}">
+                <td>
+                    <strong th:text="${activity.instance.displayName}">Активность</strong>
+                    <div class="muted">
+                        <span th:text="${activity.participantCount}">0</span>
+                        участников, лидер:
+                        <span th:text="${activity.leaderName}">—</span>
+                    </div>
+                </td>
+                <td th:text="${activity.module.name}">Тип</td>
+                <td th:text="${activity.instance.sortOrder}">0</td>
+                <td><span class="status archived">Отключена</span></td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+</main>
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>

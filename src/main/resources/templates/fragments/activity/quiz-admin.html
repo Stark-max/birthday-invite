@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="content(activity)">
+    <div class="activity-editor-grid">
+        <label>Название в гостевой странице
+            <input name="displayName" th:value="${activity.instance.displayName}">
+        </label>
+        <label>Заголовок викторины
+            <input name="title" th:value="${activity.instance.config['title']}">
+        </label>
+        <label>Лимит времени, секунд
+            <input name="timeLimitSeconds" type="number" min="0" th:value="${activity.instance.config['timeLimitSeconds'] ?: 0}">
+        </label>
+        <label class="checkbox-line">
+            <input name="allowRetry" type="checkbox" value="true" th:checked="${activity.instance.config['allowRetry'] == true}">
+            <span>Разрешить повторное прохождение</span>
+        </label>
+        <label class="checkbox-line">
+            <input name="showCorrectAnswers" type="checkbox" value="true" th:checked="${activity.instance.config['showCorrectAnswers'] != false}">
+            <span>Показывать правильные ответы</span>
+        </label>
+        <label class="checkbox-line">
+            <input name="showLeaderboard" type="checkbox" value="true" th:checked="${activity.instance.config['showLeaderboard'] != false}">
+            <span>Показывать лидерборд</span>
+        </label>
+    </div>
+
+    <div class="activity-editor-section">
+        <div class="activity-editor-heading">
+            <strong>Вопросы</strong>
+            <button class="secondary" type="button"
+                    th:onclick="|addActivityRow('quiz-question-template-${activity.instance.id}', 'quiz-questions-${activity.instance.id}')|">Добавить вопрос</button>
+        </div>
+        <div class="activity-row-list" th:id="'quiz-questions-' + ${activity.instance.id}">
+            <div class="activity-editor-row quiz-editor-row" th:each="question : ${activity.instance.config['questions']}">
+                <label>Вопрос
+                    <input name="questionTexts" th:value="${question['text']}" required>
+                </label>
+                <label>Тип ответа
+                    <select name="questionTypes">
+                        <option value="multiple_choice" th:selected="${question['type'] == 'multiple_choice'}">Варианты</option>
+                        <option value="text_input" th:selected="${question['type'] == 'text_input'}">Текст</option>
+                    </select>
+                </label>
+                <label>Варианты, каждый с новой строки
+                    <textarea name="questionOptions" rows="4" th:utext="${#strings.listJoin(question['options'], '&#10;')}"></textarea>
+                </label>
+                <label>Правильный ответ
+                    <input name="questionCorrectAnswers" th:value="${question['correctAnswer']}" placeholder="Номер варианта или текст">
+                </label>
+                <label>Очки
+                    <input name="questionPoints" type="number" min="0" th:value="${question['points'] ?: 10}">
+                </label>
+                <button class="ghost danger" type="button" onclick="removeActivityRow(this)">Удалить вопрос</button>
+            </div>
+        </div>
+    </div>
+
+    <template th:id="'quiz-question-template-' + ${activity.instance.id}">
+        <div class="activity-editor-row quiz-editor-row">
+            <label>Вопрос
+                <input name="questionTexts" required>
+            </label>
+            <label>Тип ответа
+                <select name="questionTypes">
+                    <option value="multiple_choice">Варианты</option>
+                    <option value="text_input">Текст</option>
+                </select>
+            </label>
+            <label>Варианты, каждый с новой строки
+                <textarea name="questionOptions" rows="4"></textarea>
+            </label>
+            <label>Правильный ответ
+                <input name="questionCorrectAnswers" placeholder="Номер варианта или текст">
+            </label>
+            <label>Очки
+                <input name="questionPoints" type="number" min="0" value="10">
+            </label>
+            <button class="ghost danger" type="button" onclick="removeActivityRow(this)">Удалить вопрос</button>
+        </div>
+    </template>
+</th:block>
+</html>

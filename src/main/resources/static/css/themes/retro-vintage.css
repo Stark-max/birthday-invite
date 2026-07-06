@@ -1,0 +1,13 @@
+:root {
+  --color-bg: #F5E6CC;
+  --color-bg-card: #FFF8EA;
+  --color-text: #3F2E24;
+  --color-text-secondary: #6D5546;
+  --color-accent: #B85C3C;
+  --color-accent-light: #E7B08D;
+  --color-accent-dark: #813D28;
+  --font-display: "Playfair Display";
+  --font-body: "Lora";
+  --border-radius: 12px;
+  --background-gradient: repeating-linear-gradient(45deg, rgba(129,61,40,0.03) 0 2px, transparent 2px 8px);
+}

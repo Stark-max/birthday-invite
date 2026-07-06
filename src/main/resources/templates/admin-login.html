@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход в админку</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <th:block th:replace="~{fragments/theme-variables :: theme-vars(${theme})}"></th:block>
+</head>
+<body>
+<main class="page page-narrow">
+    <section class="hero">
+        <div class="eyebrow">Управление</div>
+        <h1>Вход в админку</h1>
+    </section>
+    <form class="card stack" method="post" th:action="@{/admin/login}">
+        <p class="status declined" th:if="${error}">Неверный логин или пароль</p>
+        <div class="form-row">
+            <label for="login">Логин</label>
+            <input id="login" name="login" autocomplete="username" required autofocus>
+        </div>
+        <div class="form-row">
+            <label for="password">Пароль</label>
+            <input id="password" name="password" type="password" autocomplete="current-password" required>
+        </div>
+        <button type="submit">Войти</button>
+        <a class="btn secondary" th:href="@{/}">На главную</a>
+    </form>
+</main>
+</body>
+</html>

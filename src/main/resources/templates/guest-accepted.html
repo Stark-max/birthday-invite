@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ты в списке гостей</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="stylesheet" th:href="@{/css/activity.css}">
+    <th:block th:replace="~{fragments/theme-variables :: theme-vars(${theme})}"></th:block>
+</head>
+<body class="guest-invite-body" th:classappend="${' effect-' + (theme['visualEffect'] ?: 'birthday')}">
+<div class="visual-effect-layer" aria-hidden="true">
+    <span></span><span></span><span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span><span></span><span></span>
+</div>
+<main class="guest-invite-page">
+    <section class="invite-postcard animate-in">
+        <div class="confetti-field" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="invite-stamp">RSVP принят</div>
+        <div class="invite-visual" aria-hidden="true">
+            <div class="season-scene scene-birthday">
+                <div class="balloon balloon-one"></div>
+                <div class="balloon balloon-two"></div>
+                <div class="cake">
+                    <div class="candle"></div>
+                    <div class="cake-top"></div>
+                    <div class="cake-base"></div>
+                </div>
+            </div>
+            <div class="season-scene scene-spring">
+                <div class="spring-sun"></div>
+                <div class="flower flower-one"><span></span><span></span><span></span><span></span></div>
+                <div class="flower flower-two"><span></span><span></span><span></span><span></span></div>
+                <div class="leaf-spray"><span></span><span></span><span></span><span></span></div>
+            </div>
+            <div class="season-scene scene-summer">
+                <div class="summer-sun"></div>
+                <div class="summer-wave wave-one"></div>
+                <div class="summer-wave wave-two"></div>
+                <div class="summer-shell"></div>
+            </div>
+            <div class="season-scene scene-sakura">
+                <div class="sakura-branch"></div>
+                <div class="sakura-bloom bloom-one"></div>
+                <div class="sakura-bloom bloom-two"></div>
+                <div class="sakura-bloom bloom-three"></div>
+            </div>
+            <div class="season-scene scene-autumn">
+                <div class="autumn-moon"></div>
+                <div class="autumn-leaf leaf-one"></div>
+                <div class="autumn-leaf leaf-two"></div>
+                <div class="autumn-leaf leaf-three"></div>
+            </div>
+            <div class="season-scene scene-winter">
+                <div class="winter-moon"></div>
+                <div class="snowflake snowflake-one"></div>
+                <div class="snowflake snowflake-two"></div>
+                <div class="snowdrift drift-one"></div>
+                <div class="snowdrift drift-two"></div>
+            </div>
+        </div>
+        <div class="invite-copy">
+            <div class="eyebrow">Персональное приглашение</div>
+            <h1 th:text="'День рождения ' + ${event.name}">День рождения</h1>
+            <p class="invite-greeting">
+                <span th:text="${guest.name ?: guest.label}">Гость</span>, ты в списке гостей.
+            </p>
+            <div class="invite-ticket-grid">
+                <div class="invite-ticket">
+                    <span>Дата</span>
+                    <strong th:text="${#temporals.format(event.date, 'dd.MM.yyyy')}">01.01.2026</strong>
+                </div>
+                <div class="invite-ticket" th:if="${event.time}">
+                    <span>Время</span>
+                    <strong th:text="${event.time}">18:00</strong>
+                </div>
+                <div class="invite-ticket" th:if="${event.location}">
+                    <span>Место</span>
+                    <strong th:text="${event.location}">Адрес</strong>
+                </div>
+            </div>
+            <div class="invite-actions">
+                <a class="btn" th:if="${event.locationUrl}" th:href="${event.locationUrl}" target="_blank" rel="noreferrer">Открыть карту</a>
+                <form method="post" th:action="@{/invite/{code}/respond(code=${guest.code})}">
+                    <input type="hidden" name="name" th:value="${guest.name ?: guest.label}">
+                    <input type="hidden" name="status" value="PENDING">
+                    <button class="secondary" type="submit">Изменить ответ</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <section class="guest-section guest-content-stack" th:if="${!#lists.isEmpty(wishlist) or (event.showGuestList and !#lists.isEmpty(acceptedGuests))}">
+        <div class="guest-panel wishlist-panel" th:if="${!#lists.isEmpty(wishlist)}">
+            <div class="section-heading">
+                <span class="section-kicker">Идеи подарков</span>
+                <h2>Мой вишлист</h2>
+                <p>Выбери подарок и забронируй его, чтобы никто другой не повторил выбор.</p>
+            </div>
+            <div class="wishlist-board">
+                <div class="wishlist-card"
+                     th:each="item, iter : ${wishlist}"
+                     th:id="'wishlist-item-' + ${item.id}"
+                     th:classappend="${item.reservedBy != null} ? (${item.reservedBy.id == guest.id} ? ' reserved-by-me' : ' reserved') : ' available'">
+                    <div class="wishlist-media">
+                        <img th:if="${item.imageUrl}" th:src="${item.imageUrl}" th:alt="${item.title}" loading="lazy">
+                        <div class="wishlist-image-placeholder" th:unless="${item.imageUrl}">
+                            <span th:text="${#strings.substring(item.title, 0, 1)}">П</span>
+                        </div>
+                    </div>
+                    <div class="wishlist-content">
+                        <strong th:text="${item.title}">Подарок</strong>
+                        <span class="wishlist-price" th:text="${item.priceLabel ?: 'Нет цены'}">Нет цены</span>
+                        <details class="wishlist-comment" th:if="${item.comment}">
+                            <summary>Развернуть комментарий</summary>
+                            <p th:text="${item.comment}">Комментарий</p>
+                        </details>
+                        <a class="wishlist-shop-link" th:if="${item.productUrl}" th:href="${item.productUrl}" target="_blank" rel="noreferrer">
+                            В магазин <span aria-hidden="true">↗</span>
+                        </a>
+                    </div>
+                    <div class="wishlist-reservation">
+                        <span class="wishlist-status"
+                              th:id="'wishlist-status-' + ${item.id}"
+                              th:text="${item.reservedBy == null} ? 'Свободно' : (${item.reservedBy.id == guest.id} ? 'Бронь: вы' : 'Уже забронировано')">Свободно</span>
+                        <button class="wishlist-action"
+                                type="button"
+                                th:id="'wishlist-button-' + ${item.id}"
+                                th:disabled="${item.reservedBy != null and item.reservedBy.id != guest.id}"
+                                th:classappend="${item.reservedBy != null and item.reservedBy.id == guest.id} ? ' selected'"
+                                th:onclick="|toggleWishlistItem(this, ${item.id}, ${guest.id})|"
+                                th:aria-label="${item.reservedBy != null and item.reservedBy.id == guest.id} ? 'Отменить бронь' : 'Забронировать подарок'"
+                                th:text="${item.reservedBy != null and item.reservedBy.id == guest.id} ? 'Отменить бронь' : 'Забронировать'">Забронировать</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="guest-panel" th:if="${event.showGuestList and !#lists.isEmpty(acceptedGuests)}">
+            <div class="section-heading">
+                <span class="section-kicker">Компания</span>
+                <h2>Кто ещё идёт</h2>
+            </div>
+            <div class="guest-chip-list">
+                <span class="guest-chip" th:each="accepted : ${acceptedGuests}" th:text="${accepted.name ?: accepted.label}">Гость</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="guest-section activities-showcase" th:if="${!#lists.isEmpty(activityViews)}">
+        <div class="section-heading section-heading-center">
+            <span class="section-kicker">Мини-игры</span>
+            <h2>Развлечения на празднике</h2>
+            <p>Открывай карточки, набирай очки и оживляй вечеринку до начала праздника.</p>
+        </div>
+        <div class="activity-grid">
+            <article class="activity-card" th:each="activity : ${activityViews}">
+                <div class="activity-card-header">
+                    <div class="activity-icon" th:text="${activity.module.icon}">A</div>
+                    <div>
+                        <h3 th:text="${activity.instance.displayName}">Активность</h3>
+                        <p class="muted" th:text="${activity.module.description}">Описание</p>
+                    </div>
+                    <button class="secondary activity-play-button" type="button" th:onclick="|toggleActivity(${activity.instance.id})|">Играть</button>
+                </div>
+                <div class="activity-panel hidden" th:id="'activity-' + ${activity.instance.id}">
+                    <th:block th:if="${activity.instance.moduleSlug == 'quiz'}">
+                        <th:block th:replace="~{fragments/activity/quiz-guest :: content(${activity}, ${guest})}"></th:block>
+                    </th:block>
+                    <th:block th:if="${activity.instance.moduleSlug == 'wheel'}">
+                        <th:block th:replace="~{fragments/activity/wheel-guest :: content(${activity}, ${guest})}"></th:block>
+                    </th:block>
+                    <th:block th:if="${activity.instance.moduleSlug == 'truth-or-dare'}">
+                        <th:block th:replace="~{fragments/activity/truth-or-dare-guest :: content(${activity}, ${guest})}"></th:block>
+                    </th:block>
+                    <th:block th:if="${activity.instance.moduleSlug == 'photo-challenge'}">
+                        <th:block th:replace="~{fragments/activity/photo-challenge-guest :: content(${activity}, ${guest})}"></th:block>
+                    </th:block>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <section class="guest-section leaderboard-panel" th:if="${!#lists.isEmpty(leaderboard)}">
+        <div class="section-heading">
+            <span class="section-kicker">Очки</span>
+            <h2>Турнирная таблица</h2>
+        </div>
+        <div class="leaderboard-row"
+             th:each="score, iter : ${leaderboard}"
+             th:if="${iter.index < 10}"
+             th:classappend="${score.guestId == guest.id} ? ' current-guest'">
+            <span class="avatar" th:text="${#strings.substring(score.guestName, 0, 1)}">A</span>
+            <strong th:text="${score.guestName}">Гость</strong>
+            <span th:text="${score.totalPoints} + ' очков'">0 очков</span>
+        </div>
+    </section>
+</main>
+<script th:src="@{/js/app.js}"></script>
+<script th:src="@{/js/quiz.js}"></script>
+<script th:src="@{/js/wheel.js}"></script>
+<script th:src="@{/js/activities.js}"></script>
+</body>
+</html>

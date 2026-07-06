@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="activity-card(activity)">
+    <article class="card activity-card">
+        <div class="activity-icon" th:text="${activity.module.icon}">A</div>
+        <h3 th:text="${activity.instance.displayName}">Активность</h3>
+        <p class="muted" th:text="${activity.module.description}">Описание</p>
+    </article>
+</th:block>
+</html>

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ответ отправлен</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <th:block th:replace="~{fragments/theme-variables :: theme-vars(${theme})}"></th:block>
+</head>
+<body>
+<main class="page page-narrow">
+    <section class="hero">
+        <div class="eyebrow">Ответ принят</div>
+        <h1>Жаль, что не получится</h1>
+        <p class="muted" th:text="${guest.name ?: guest.label}">Гость</p>
+    </section>
+    <section class="card stack">
+        <p th:if="${guest.wish}" th:text="'Твоё пожелание: “' + ${guest.wish} + '”'">Пожелание</p>
+        <form method="post" th:action="@{/invite/{code}/respond(code=${guest.code})}">
+            <input type="hidden" name="name" th:value="${guest.name ?: guest.label}">
+            <input type="hidden" name="status" value="PENDING">
+            <button class="secondary" type="submit">Планы изменились? Ответить заново</button>
+        </form>
+        <p class="muted" th:if="${event.contactInfo}" th:text="${event.contactInfo}">Контакт</p>
+    </section>
+</main>
+</body>
+</html>

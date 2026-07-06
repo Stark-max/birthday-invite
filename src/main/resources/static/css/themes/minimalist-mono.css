@@ -1,0 +1,20 @@
+:root {
+  --color-bg: #FFFFFF;
+  --color-bg-card: #FFFFFF;
+  --color-text: #111111;
+  --color-text-secondary: #5F5F5F;
+  --color-accent: #111111;
+  --color-accent-light: #E0E0E0;
+  --color-accent-dark: #000000;
+  --font-display: "DM Serif Display";
+  --font-body: "DM Sans";
+  --border-radius: 2px;
+  --card-shadow: none;
+}
+
+.card,
+input,
+textarea,
+select {
+  border: 1px solid #E0E0E0;
+}

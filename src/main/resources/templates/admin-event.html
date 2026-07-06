@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Профиль события</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <th:block th:replace="~{fragments/theme-variables :: theme-vars(${theme})}"></th:block>
+</head>
+<body>
+<main class="page">
+    <header class="topbar">
+        <div>
+            <div class="brand">Профиль события</div>
+            <h1 th:text="'День рождения ' + ${event.name}">День рождения</h1>
+            <p class="muted">Имя именинника, дата, место и текст приглашения.</p>
+        </div>
+        <nav class="nav-links">
+            <a th:if="${session.adminRole == 'SUPER_ADMIN'}" th:href="@{/super-admin}">Супер-админ</a>
+            <a th:href="@{/admin}">Админка</a>
+            <a th:href="@{/admin/wishlist}">Вишлист</a>
+            <a th:href="@{/admin/themes}">Темы</a>
+            <a th:href="@{/admin/activities}">Активности</a>
+        </nav>
+    </header>
+
+    <div class="notice success" th:if="${param.saved}">Профиль события сохранен.</div>
+    <div class="notice" th:if="${event.publicSlug}">
+        Публичная ссылка:
+        <a th:href="@{/e/{slug}(slug=${event.publicSlug})}"
+           th:text="${'/e/' + event.publicSlug}">/e/event</a>
+    </div>
+
+    <form class="card stack event-profile-form" method="post" th:action="@{/admin/event}" th:object="${request}">
+        <div class="split">
+            <label for="name">Имя именинника
+                <input id="name" th:field="*{name}" required>
+                <span class="form-error" th:if="${#fields.hasErrors('name')}" th:errors="*{name}">Ошибка</span>
+            </label>
+            <label for="date">Дата
+                <input id="date" type="date" th:field="*{date}" required>
+                <span class="form-error" th:if="${#fields.hasErrors('date')}" th:errors="*{date}">Ошибка</span>
+            </label>
+        </div>
+        <div class="split">
+            <label for="time">Время
+                <input id="time" th:field="*{time}" placeholder="18:00">
+            </label>
+            <label for="contactInfo">Контакт
+                <input id="contactInfo" th:field="*{contactInfo}" placeholder="Telegram или телефон">
+            </label>
+        </div>
+        <label for="location">Место
+            <input id="location" th:field="*{location}" placeholder="Название места или адрес">
+        </label>
+        <label for="locationUrl">Ссылка на карту
+            <input id="locationUrl" type="url" th:field="*{locationUrl}" placeholder="https://...">
+        </label>
+        <label for="message">Текст приглашения
+            <textarea id="message" rows="5" th:field="*{message}" placeholder="Короткое сообщение для гостей"></textarea>
+        </label>
+        <label class="checkbox-line" for="showGuestList">
+            <input id="showGuestList" type="checkbox" th:field="*{showGuestList}">
+            <span>Показывать гостям список тех, кто идет</span>
+        </label>
+        <div class="form-actions">
+            <button type="submit">Сохранить профиль</button>
+            <a class="btn secondary" th:href="@{/admin}">Назад</a>
+        </div>
+    </form>
+</main>
+</body>
+</html>

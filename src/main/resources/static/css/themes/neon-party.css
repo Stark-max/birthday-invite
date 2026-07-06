@@ -1,0 +1,22 @@
+:root {
+  --color-bg: #0D0D0D;
+  --color-bg-card: #171717;
+  --color-text: #F7F7F7;
+  --color-text-secondary: #C9C9C9;
+  --color-accent: #00FFD1;
+  --color-accent-light: #7DFFE9;
+  --color-accent-dark: #00B894;
+  --font-display: "Orbitron";
+  --font-body: "Space Grotesk";
+  --border-radius: 14px;
+  --card-shadow: 0 0 20px rgba(0,255,209,0.08);
+}
+
+.card {
+  border: 1px solid rgba(0,255,209,0.15);
+}
+
+.btn:hover,
+button:hover {
+  box-shadow: 0 0 18px rgba(0,255,209,0.18);
+}

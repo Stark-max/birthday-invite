@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="content(activity, guest)">
+    <script type="application/json" th:id="'activity-config-' + ${activity.instance.id}" th:utext="${activity.configJson}"></script>
+    <div class="stack">
+        <div th:id="'quiz-root-' + ${activity.instance.id}">
+            <p class="muted">Вопросы будут показаны по одному.</p>
+            <button type="button" th:onclick="|startQuiz(${activity.instance.id}, ${guest.id})|">Начать викторину</button>
+        </div>
+    </div>
+</th:block>
+</html>

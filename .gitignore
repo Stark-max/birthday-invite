@@ -1,0 +1,14 @@
+.gradle/
+build/
+out/
+target/
+
+.agents/
+.codex/
+.idea/
+*.iml
+
+*.log
+.env
+.env.*
+!.env.example

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление вишлистом</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <th:block th:replace="~{fragments/theme-variables :: theme-vars(${theme})}"></th:block>
+</head>
+<body>
+<main class="page">
+    <header class="topbar">
+        <div>
+            <div class="brand">Вишлист</div>
+            <h1>Подарки для гостей</h1>
+            <p class="muted">Карточки с фото, ценой, комментарием и ссылкой на магазин.</p>
+        </div>
+        <nav class="nav-links">
+            <a th:if="${session.adminRole == 'SUPER_ADMIN'}" th:href="@{/super-admin}">Супер-админ</a>
+            <a th:href="@{/admin}">Админка</a>
+            <a th:href="@{/admin/event}">Профиль события</a>
+            <a th:href="@{/admin/themes}">Темы</a>
+            <a th:href="@{/admin/activities}">Активности</a>
+        </nav>
+    </header>
+
+    <div class="notice success" th:if="${param.saved}">Вишлист сохранён.</div>
+
+    <form class="stack" method="post" th:action="@{/admin/wishlist}">
+        <div id="wishlist-fields" class="wishlist-editor-grid">
+            <article class="card wishlist-editor-card" th:each="item, iter : ${wishlist}">
+                <div class="wishlist-editor-heading">
+                    <span class="wishlist-editor-number" th:text="${iter.index + 1}">1</span>
+                    <strong>Карточка подарка</strong>
+                    <button class="ghost danger" type="button" onclick="removeWishlistField(this)">Удалить</button>
+                </div>
+                <input type="hidden" name="itemIds" th:value="${item.id}">
+                <label>Название
+                    <input name="titles" th:value="${item.title}" placeholder="Например: фотоаппарат" required>
+                </label>
+                <div class="wishlist-editor-columns">
+                    <label>Цена
+                        <input name="priceLabels" th:value="${item.priceLabel}" placeholder="Например: 12 000 сом">
+                    </label>
+                    <label>Ссылка на магазин
+                        <input name="productUrls" type="url" th:value="${item.productUrl}" placeholder="https://...">
+                    </label>
+                </div>
+                <label>Ссылка на фотографию
+                    <input name="imageUrls" type="url" th:value="${item.imageUrl}" placeholder="https://.../photo.jpg">
+                </label>
+                <label>Комментарий
+                    <textarea name="comments" rows="3" th:text="${item.comment}" placeholder="Размер, цвет или важное уточнение"></textarea>
+                </label>
+                <div class="reservation-line" th:if="${item.reservedBy != null}">
+                    Забронировано: <strong th:text="${item.reservedBy.name ?: item.reservedBy.label}">Гость</strong>
+                </div>
+            </article>
+        </div>
+
+        <div class="wishlist-editor-actions">
+            <button class="secondary" type="button" onclick="addWishlistField()">Добавить подарок</button>
+            <button type="submit">Сохранить вишлист</button>
+        </div>
+    </form>
+</main>
+<template id="wishlist-field-template">
+    <article class="card wishlist-editor-card">
+        <div class="wishlist-editor-heading">
+            <span class="wishlist-editor-number">+</span>
+            <strong>Новая карточка</strong>
+            <button class="ghost danger" type="button" onclick="removeWishlistField(this)">Удалить</button>
+        </div>
+        <input type="hidden" name="itemIds" value="">
+        <label>Название
+            <input name="titles" placeholder="Например: фотоаппарат" required>
+        </label>
+        <div class="wishlist-editor-columns">
+            <label>Цена
+                <input name="priceLabels" placeholder="Например: 12 000 сом">
+            </label>
+            <label>Ссылка на магазин
+                <input name="productUrls" type="url" placeholder="https://...">
+            </label>
+        </div>
+        <label>Ссылка на фотографию
+            <input name="imageUrls" type="url" placeholder="https://.../photo.jpg">
+        </label>
+        <label>Комментарий
+            <textarea name="comments" rows="3" placeholder="Размер, цвет или важное уточнение"></textarea>
+        </label>
+    </article>
+</template>
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>

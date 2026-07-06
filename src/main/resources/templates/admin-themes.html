@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Темы</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <th:block th:replace="~{fragments/theme-variables :: theme-vars(${theme})}"></th:block>
+</head>
+<body>
+<main class="page">
+    <header class="topbar">
+        <div>
+            <div class="brand">Темы</div>
+            <h1>Визуальная кастомизация</h1>
+        </div>
+        <nav class="nav-links">
+            <a th:if="${session.adminRole == 'SUPER_ADMIN'}" th:href="@{/super-admin}">Супер-админ</a>
+            <a th:href="@{/admin}">Админка</a>
+            <a th:href="@{/admin/event}">Профиль события</a>
+            <a th:href="@{/admin/wishlist}">Вишлист</a>
+            <a th:href="@{/admin/activities}">Активности</a>
+        </nav>
+    </header>
+
+    <section class="card stack visual-effect-settings">
+        <div>
+            <h2>Атмосфера приглашения</h2>
+            <p class="muted">Эффект меняет фон гостевой страницы и иллюстрацию внутри приглашения.</p>
+        </div>
+        <div class="visual-effect-options">
+            <form method="post" th:action="@{/admin/themes/effect}">
+                <input type="hidden" name="visualEffect" value="birthday">
+                <button class="visual-effect-option" type="submit" th:classappend="${currentTheme['visualEffect'] == 'birthday'} ? ' active'">
+                    <span class="effect-option-preview preview-birthday"></span><strong>Праздник</strong>
+                </button>
+            </form>
+            <form method="post" th:action="@{/admin/themes/effect}">
+                <input type="hidden" name="visualEffect" value="spring">
+                <button class="visual-effect-option" type="submit" th:classappend="${currentTheme['visualEffect'] == 'spring'} ? ' active'">
+                    <span class="effect-option-preview preview-spring"></span><strong>Весна</strong>
+                </button>
+            </form>
+            <form method="post" th:action="@{/admin/themes/effect}">
+                <input type="hidden" name="visualEffect" value="summer">
+                <button class="visual-effect-option" type="submit" th:classappend="${currentTheme['visualEffect'] == 'summer'} ? ' active'">
+                    <span class="effect-option-preview preview-summer"></span><strong>Лето</strong>
+                </button>
+            </form>
+            <form method="post" th:action="@{/admin/themes/effect}">
+                <input type="hidden" name="visualEffect" value="sakura">
+                <button class="visual-effect-option" type="submit" th:classappend="${currentTheme['visualEffect'] == 'sakura'} ? ' active'">
+                    <span class="effect-option-preview preview-sakura"></span><strong>Сакура</strong>
+                </button>
+            </form>
+            <form method="post" th:action="@{/admin/themes/effect}">
+                <input type="hidden" name="visualEffect" value="autumn">
+                <button class="visual-effect-option" type="submit" th:classappend="${currentTheme['visualEffect'] == 'autumn'} ? ' active'">
+                    <span class="effect-option-preview preview-autumn"></span><strong>Осень</strong>
+                </button>
+            </form>
+            <form method="post" th:action="@{/admin/themes/effect}">
+                <input type="hidden" name="visualEffect" value="winter">
+                <button class="visual-effect-option" type="submit" th:classappend="${currentTheme['visualEffect'] == 'winter'} ? ' active'">
+                    <span class="effect-option-preview preview-winter"></span><strong>Зима</strong>
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <section class="card stack">
+        <h2>Глобальная тема</h2>
+        <div class="grid">
+            <form class="card stack" method="post" th:each="preset : ${presets}" th:action="@{/admin/themes/global}">
+                <input type="hidden" name="presetSlug" th:value="${preset.slug}">
+                <div class="swatches">
+                    <span class="swatch" th:style="'background:' + ${preset.themeData['colorBg']}"></span>
+                    <span class="swatch" th:style="'background:' + ${preset.themeData['colorAccent']}"></span>
+                    <span class="swatch" th:style="'background:' + ${preset.themeData['colorText']}"></span>
+                    <span class="swatch" th:style="'background:' + ${preset.themeData['colorAccentLight']}"></span>
+                </div>
+                <h3 th:text="${preset.name}">Preset</h3>
+                <p class="muted" th:text="${preset.description}">Описание</p>
+                <button type="submit">Применить</button>
+                <button class="ghost danger" type="submit" th:if="${!preset.builtin}" th:formaction="@{/admin/themes/presets/{id}/delete(id=${preset.id})}">Удалить</button>
+            </form>
+        </div>
+    </section>
+
+    <section class="grid" style="margin-top:18px">
+        <form class="card stack" method="post" th:action="@{/admin/themes/global}" data-theme-form="#manual-preview">
+            <h2>Ручная настройка</h2>
+            <div class="split">
+                <label>Фон<input type="color" name="colorBg" th:value="${currentTheme['colorBg']}"></label>
+                <label>Карточка<input type="color" name="colorBgCard" th:value="${currentTheme['colorBgCard']}"></label>
+                <label>Текст<input type="color" name="colorText" th:value="${currentTheme['colorText']}"></label>
+                <label>Акцент<input type="color" name="colorAccent" th:value="${currentTheme['colorAccent']}"></label>
+            </div>
+            <label>Шрифт заголовков
+                <select name="fontDisplay">
+                    <option>Cormorant Garamond</option>
+                    <option>Orbitron</option>
+                    <option>DM Serif Display</option>
+                    <option>Playfair Display</option>
+                    <option>Zen Maru Gothic</option>
+                </select>
+            </label>
+            <label>Шрифт текста
+                <select name="fontBody">
+                    <option>Outfit</option>
+                    <option>Space Grotesk</option>
+                    <option>DM Sans</option>
+                    <option>Lora</option>
+                    <option>Quicksand</option>
+                </select>
+            </label>
+            <label>Скругление
+                <input type="range" name="borderRadius" min="0" max="32" th:value="${#strings.replace(currentTheme['borderRadius'], 'px', '')}">
+            </label>
+            <label>Паттерн
+                <select name="backgroundPattern">
+                    <option value="none">none</option>
+                    <option value="dots">dots</option>
+                    <option value="lines">lines</option>
+                    <option value="grid">grid</option>
+                </select>
+            </label>
+            <input type="hidden" name="colorTextSecondary" th:value="${currentTheme['colorTextSecondary']}">
+            <input type="hidden" name="colorAccentLight" th:value="${currentTheme['colorAccentLight']}">
+            <input type="hidden" name="colorAccentDark" th:value="${currentTheme['colorAccentDark']}">
+            <input type="hidden" name="colorSuccess" th:value="${currentTheme['colorSuccess']}">
+            <input type="hidden" name="colorDanger" th:value="${currentTheme['colorDanger']}">
+            <input type="hidden" name="cardShadow" th:value="${currentTheme['cardShadow']}">
+            <input type="hidden" name="backgroundGradient" th:value="${currentTheme['backgroundGradient']}">
+            <input type="hidden" name="headerStyle" value="centered">
+            <input type="hidden" name="animationStyle" value="fadeUp">
+            <input type="hidden" name="visualEffect" th:value="${currentTheme['visualEffect']}">
+            <button type="submit">Сохранить как глобальную</button>
+            <button class="secondary" type="submit" th:formaction="@{/admin/themes/presets}" onclick="const i=this.form.querySelector('[name=name]'); i.value = i.value || 'Custom theme'">Сохранить как пресет</button>
+            <input name="name" placeholder="Название пресета">
+        </form>
+
+        <div class="card stack">
+            <h2>Живое превью</h2>
+            <div id="manual-preview" class="theme-preview">
+                <div class="theme-preview-card">
+                    <div class="eyebrow">Приглашение</div>
+                    <h3>День рождения</h3>
+                    <p>Мини-карточка меняется сразу при выборе цвета.</p>
+                    <button type="button">Кнопка</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="card stack" style="margin-top:18px">
+        <h2>Персональные темы гостей</h2>
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Гость</th>
+                <th>Назначить тему</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="guest : ${guests}">
+                <td th:text="${guest.name ?: guest.label}">Гость</td>
+                <td>
+                    <form class="split" method="post" th:action="@{/admin/themes/guest/{id}(id=${guest.id})}">
+                        <select name="presetSlug">
+                            <option th:each="preset : ${presets}" th:value="${preset.slug}" th:text="${preset.name}">Preset</option>
+                        </select>
+                        <button type="submit">Назначить</button>
+                    </form>
+                </td>
+                <td>
+                    <form method="post" th:action="@{/admin/themes/guest/{id}/reset(id=${guest.id})}">
+                        <button class="secondary" type="submit">Сбросить</button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+</main>
+<script th:src="@{/js/theme-preview.js}"></script>
+</body>
+</html>

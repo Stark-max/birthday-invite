@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="content(activity, guest)">
+    <div class="challenge-list">
+        <div class="challenge-item" th:each="challenge, iter : ${activity.instance.config['challenges']}">
+            <span th:text="${challenge}">Челлендж</span>
+            <button type="button" th:onclick="|completeChallenge(${activity.instance.id}, ${guest.id}, ${iter.index})|">Готово</button>
+        </div>
+    </div>
+    <div class="challenge-gallery stack" th:if="${activity.instance.config['showGallery'] != false}">
+        <h4>Выполненные челленджи</h4>
+        <div class="leaderboard-row" th:each="result : ${activity.results}"
+             th:if="${result.resultData['type'] == 'photo-challenge' and result.resultData['action'] == 'complete'}">
+            <span th:text="${result.guest.name ?: result.guest.label}">Гость</span>
+            <span th:text="${result.resultData['challenge']}">Челлендж</span>
+            <button class="secondary" type="button"
+                    th:if="${activity.instance.config['allowVoting'] and result.guest.id != guest.id}"
+                    th:onclick="|voteChallenge(${activity.instance.id}, ${guest.id}, ${result.id})|">+1</button>
+            <span class="muted" th:if="${result.guest.id == guest.id}">твой</span>
+        </div>
+    </div>
+    <p class="muted" th:id="'challenge-result-' + ${activity.instance.id}"></p>
+</th:block>
+</html>

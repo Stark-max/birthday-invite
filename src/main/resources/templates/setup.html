@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Создать приглашение</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%82%3C/text%3E%3C/svg%3E">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <th:block th:replace="~{fragments/theme-variables :: theme-vars(${theme})}"></th:block>
+</head>
+<body>
+<main class="page page-narrow">
+    <section class="hero animate-in">
+        <div class="eyebrow">Birthday Invite</div>
+        <h1>Создать приглашение</h1>
+        <p class="muted">Заполни основные данные события, гостей можно добавить после создания.</p>
+    </section>
+
+    <form class="card stack animate-in" method="post" th:action="@{/setup}" th:object="${request}">
+        <p class="status declined" th:if="${setupError}" th:text="${setupError}">Ошибка</p>
+        <div class="split">
+            <div class="form-row">
+                <label for="adminLogin">Логин супер-админа</label>
+                <input id="adminLogin" th:field="*{adminLogin}" autocomplete="username" required>
+            </div>
+            <div class="form-row">
+                <label for="adminDisplayName">Имя администратора</label>
+                <input id="adminDisplayName" th:field="*{adminDisplayName}" required>
+            </div>
+        </div>
+        <div class="split">
+            <div class="form-row">
+                <label for="name">Имя именинника</label>
+                <input id="name" th:field="*{name}" required>
+            </div>
+            <div class="form-row">
+                <label for="date">Дата</label>
+                <input id="date" type="date" th:field="*{date}" required>
+            </div>
+        </div>
+        <div class="split">
+            <div class="form-row">
+                <label for="time">Время</label>
+                <input id="time" type="time" th:field="*{time}">
+            </div>
+            <div class="form-row">
+                <label for="location">Место</label>
+                <input id="location" th:field="*{location}" placeholder="Название места или адрес">
+            </div>
+        </div>
+        <div class="form-row">
+            <label for="locationUrl">Ссылка на карту</label>
+            <input id="locationUrl" th:field="*{locationUrl}" placeholder="https://maps.google.com/...">
+        </div>
+        <div class="form-row">
+            <label for="message">Приветственное сообщение</label>
+            <textarea id="message" th:field="*{message}" placeholder="Приглашаю тебя на мой день рождения..."></textarea>
+        </div>
+        <div class="form-row">
+            <label>Wish list</label>
+            <div id="wishlist-fields" class="stack">
+                <div class="wishlist-field">
+                    <input name="wishlistItems" placeholder="Подарок">
+                    <button class="secondary" type="button" onclick="removeWishlistField(this)">Убрать</button>
+                </div>
+            </div>
+            <button class="secondary" type="button" onclick="addWishlistField()">Добавить подарок</button>
+        </div>
+        <div class="split">
+            <div class="form-row">
+                <label for="password">Пароль администратора</label>
+                <input id="password" type="password" th:field="*{password}" minlength="6" autocomplete="new-password" required>
+            </div>
+            <div class="form-row">
+                <label for="contactInfo">Контакт</label>
+                <input id="contactInfo" th:field="*{contactInfo}" placeholder="Telegram или телефон">
+            </div>
+        </div>
+        <button type="submit">Создать и перейти в админку</button>
+    </form>
+</main>
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>

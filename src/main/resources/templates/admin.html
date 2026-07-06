@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Панель управления</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="stylesheet" th:href="@{/css/activity.css}">
+    <th:block th:replace="~{fragments/theme-variables :: theme-vars(${theme})}"></th:block>
+</head>
+<body>
+<main class="page">
+    <header class="topbar">
+        <div>
+            <div class="brand">Админка</div>
+            <h1 th:text="'День рождения ' + ${event.name}">День рождения</h1>
+            <p class="muted">
+                <span th:text="${#temporals.format(event.date, 'dd.MM.yyyy')}">01.01.2026</span>
+                <span th:if="${event.time}" th:text="' в ' + ${event.time}"></span>
+            </p>
+        </div>
+        <nav class="nav-links">
+            <a th:if="${session.adminRole == 'SUPER_ADMIN'}" th:href="@{/super-admin}">Супер-админ</a>
+            <a th:href="@{/admin/event}">Профиль события</a>
+            <a th:href="@{/admin/wishlist}">Вишлист</a>
+            <a th:href="@{/admin/themes}">Темы</a>
+            <a th:href="@{/admin/activities}">Активности</a>
+            <a th:href="@{/admin/logout}">Выйти</a>
+        </nav>
+    </header>
+
+    <div class="notice" th:if="${event.publicSlug}">
+        Публичная страница:
+        <a th:href="@{/e/{slug}(slug=${event.publicSlug})}"
+           th:text="${'/e/' + event.publicSlug}">/e/event</a>
+    </div>
+
+    <section class="grid">
+        <div class="card stat">
+            <div class="stat-value" th:text="${stats.acceptedCount}">0</div>
+            <div class="muted">Придут</div>
+        </div>
+        <div class="card stat">
+            <div class="stat-value" th:text="${stats.declinedCount}">0</div>
+            <div class="muted">Не смогут</div>
+        </div>
+        <div class="card stat">
+            <div class="stat-value" th:text="${stats.pendingCount}">0</div>
+            <div class="muted">Ожидают</div>
+        </div>
+    </section>
+
+    <section class="grid" style="margin-top:18px">
+        <div class="card stack">
+            <h2>Гости</h2>
+            <form class="split" method="post" th:action="@{/admin/guests}">
+                <input name="label" placeholder="Например: Айдана" required>
+                <button type="submit">Добавить</button>
+            </form>
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>Гость</th>
+                    <th>Статус</th>
+                    <th>Ссылка</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="guest : ${guests}">
+                    <td>
+                        <strong th:text="${guest.name ?: guest.label}">Гость</strong>
+                        <div class="muted" th:if="${guest.name}" th:text="${guest.label}">Пометка</div>
+                        <div class="muted" th:if="${guest.wish}" th:text="${guest.wish}">Пожелание</div>
+                    </td>
+                    <td>
+                        <span class="status"
+                              th:classappend="${guest.status.name() == 'ACCEPTED'} ? ' accepted' : (${guest.status.name() == 'DECLINED'} ? ' declined' : ' pending')"
+                              th:text="${guest.status}">PENDING</span>
+                    </td>
+                    <td>
+                        <button class="secondary" type="button" th:attr="data-copy-code=${guest.code}" onclick="copyInviteLink(this.dataset.copyCode)">Скопировать</button>
+                    </td>
+                    <td>
+                        <form method="post" th:action="@{/admin/guests/{id}/delete(id=${guest.id})}" th:attr="data-guest-label=${guest.label}" onsubmit="return confirmDelete(this.dataset.guestLabel)">
+                            <button class="ghost danger" type="submit">Удалить</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="stack">
+            <div class="card stack">
+                <h2>Wish List</h2>
+                <p class="muted">
+                    <strong th:text="${#lists.size(wishlist)}">0</strong>
+                    подарков. Фото, цены, ссылки и бронирование находятся на отдельной странице.
+                </p>
+                <a class="btn" th:href="@{/admin/wishlist}">Управлять вишлистом</a>
+            </div>
+
+            <div class="card stack">
+                <h2>Настройки</h2>
+                <p class="muted">Список гостей сейчас: <strong th:text="${event.showGuestList ? 'показывается' : 'скрыт'}">показывается</strong></p>
+                <form method="post" th:action="@{/admin/settings/toggle-guestlist}">
+                    <button class="secondary" type="submit">Переключить список гостей</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <section class="card stack" style="margin-top:18px">
+        <div class="topbar" style="margin-bottom:0">
+            <h2>Активности</h2>
+            <a class="btn secondary" th:href="@{/admin/activities}">Управлять</a>
+        </div>
+        <div class="grid" th:if="${!#lists.isEmpty(activityViews)}">
+            <div class="activity-card" th:each="activity : ${activityViews}">
+                <div class="activity-icon" th:text="${activity.module.icon}">A</div>
+                <h3 th:text="${activity.instance.displayName}">Активность</h3>
+                <p class="muted">
+                    <span th:text="${activity.participantCount}">0</span>
+                    участников, лидер:
+                    <span th:text="${activity.leaderName}">—</span>
+                </p>
+            </div>
+        </div>
+        <p class="muted" th:if="${#lists.isEmpty(activityViews)}">Активности пока не подключены.</p>
+    </section>
+
+    <section class="card stack" style="margin-top:18px" th:if="${!#lists.isEmpty(leaderboard)}">
+        <h2>Общий лидерборд</h2>
+        <div class="leaderboard-row" th:each="score : ${leaderboard}">
+            <span class="avatar" th:text="${#strings.substring(score.guestName, 0, 1)}">A</span>
+            <strong th:text="${score.guestName}">Гость</strong>
+            <span th:text="${score.totalPoints} + ' очков'">0 очков</span>
+        </div>
+    </section>
+</main>
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>

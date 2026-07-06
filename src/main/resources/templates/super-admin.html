@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Супер-админ</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <th:block th:replace="~{fragments/theme-variables :: theme-vars(${theme})}"></th:block>
+</head>
+<body>
+<main class="page">
+    <header class="topbar">
+        <div>
+            <div class="brand">Супер-админ</div>
+            <h1>Центр управления</h1>
+            <p class="muted">Администраторы и их отдельные приглашения.</p>
+        </div>
+        <nav class="nav-links">
+            <a th:href="@{/super-admin/admins}">Администраторы</a>
+            <a th:href="@{/super-admin/events}">Приглашения</a>
+            <a th:href="@{/admin/password/change}">Пароль</a>
+            <a th:href="@{/admin/logout}">Выйти</a>
+        </nav>
+    </header>
+    <section class="grid">
+        <div class="card stat">
+            <div class="stat-value" th:text="${#lists.size(admins)}">0</div>
+            <div class="muted">Учётных записей</div>
+        </div>
+        <div class="card stat">
+            <div class="stat-value" th:text="${#lists.size(events)}">0</div>
+            <div class="muted">Приглашений</div>
+        </div>
+    </section>
+    <section class="admin-actions">
+        <a class="btn" th:href="@{/super-admin/admins}">Управлять администраторами</a>
+        <a class="btn secondary" th:href="@{/super-admin/events}">Открыть приглашения</a>
+    </section>
+</main>
+</body>
+</html>
+

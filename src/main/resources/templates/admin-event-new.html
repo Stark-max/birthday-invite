@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Новое приглашение</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <th:block th:replace="~{fragments/theme-variables :: theme-vars(${theme})}"></th:block>
+</head>
+<body>
+<main class="page page-narrow">
+    <section class="hero">
+        <div class="eyebrow">Первый шаг</div>
+        <h1>Создать приглашение</h1>
+        <p class="muted">Это приглашение будет доступно только вашей учётной записи.</p>
+    </section>
+    <form class="card stack event-profile-form" method="post" th:action="@{/admin/event/new}" th:object="${request}">
+        <div class="split">
+            <label for="name">Имя именинника
+                <input id="name" th:field="*{name}" required>
+                <span class="form-error" th:if="${#fields.hasErrors('name')}" th:errors="*{name}">Ошибка</span>
+            </label>
+            <label for="date">Дата
+                <input id="date" type="date" th:field="*{date}" required>
+                <span class="form-error" th:if="${#fields.hasErrors('date')}" th:errors="*{date}">Ошибка</span>
+            </label>
+        </div>
+        <div class="split">
+            <label for="time">Время
+                <input id="time" type="time" th:field="*{time}">
+            </label>
+            <label for="contactInfo">Контакт
+                <input id="contactInfo" th:field="*{contactInfo}" placeholder="Telegram или телефон">
+            </label>
+        </div>
+        <label for="location">Место
+            <input id="location" th:field="*{location}" placeholder="Название места или адрес">
+        </label>
+        <label for="locationUrl">Ссылка на карту
+            <input id="locationUrl" type="url" th:field="*{locationUrl}" placeholder="https://...">
+        </label>
+        <label for="message">Текст приглашения
+            <textarea id="message" rows="5" th:field="*{message}"></textarea>
+        </label>
+        <label class="checkbox-line" for="showGuestList">
+            <input id="showGuestList" type="checkbox" th:field="*{showGuestList}">
+            <span>Показывать гостям список участников</span>
+        </label>
+        <button type="submit">Создать приглашение</button>
+    </form>
+</main>
+</body>
+</html>
+

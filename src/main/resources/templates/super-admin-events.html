@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Приглашения</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <th:block th:replace="~{fragments/theme-variables :: theme-vars(${theme})}"></th:block>
+</head>
+<body>
+<main class="page">
+    <header class="topbar">
+        <div>
+            <div class="brand">Супер-админ</div>
+            <h1>Приглашения</h1>
+            <p class="muted">Каждое приглашение связано со своим владельцем.</p>
+        </div>
+        <nav class="nav-links">
+            <a th:href="@{/super-admin}">Обзор</a>
+            <a th:href="@{/super-admin/admins}">Администраторы</a>
+            <a th:href="@{/admin/logout}">Выйти</a>
+        </nav>
+    </header>
+    <section class="admin-table-section">
+        <div class="table-scroll">
+            <table class="table">
+                <thead><tr><th>Событие</th><th>Владелец</th><th>Дата</th><th>Публичная ссылка</th><th></th></tr></thead>
+                <tbody>
+                <tr th:each="event : ${events}">
+                    <td><strong th:text="${event.name}">Имя</strong></td>
+                    <td>
+                        <span th:if="${event.ownerAdmin}" th:text="${event.ownerAdmin.displayName + ' (' + event.ownerAdmin.login + ')'}">Владелец</span>
+                        <span class="muted" th:unless="${event.ownerAdmin}">Не назначен</span>
+                    </td>
+                    <td th:text="${#temporals.format(event.date, 'dd.MM.yyyy')}">01.01.2026</td>
+                    <td><a th:href="@{/e/{slug}(slug=${event.publicSlug})}" th:text="${'/e/' + event.publicSlug}">Ссылка</a></td>
+                    <td>
+                        <form method="post" th:action="@{/super-admin/events/{id}/open(id=${event.id})}">
+                            <button type="submit">Управлять</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(events)}"><td colspan="5" class="muted">Приглашений пока нет.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+</body>
+</html>

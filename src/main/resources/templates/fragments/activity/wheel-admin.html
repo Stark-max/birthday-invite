@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="content(activity)">
+    <div class="activity-editor-grid">
+        <label>Название в гостевой странице
+            <input name="displayName" th:value="${activity.instance.displayName}">
+        </label>
+        <label>Заголовок внутри активности
+            <input name="title" th:value="${activity.instance.config['title']}">
+        </label>
+        <label>Лимит вращений на гостя
+            <input name="spinPerGuest" type="number" min="0" th:value="${activity.instance.config['spinPerGuest']}">
+        </label>
+        <label class="checkbox-line">
+            <input name="showHistory" type="checkbox" value="true" th:checked="${activity.instance.config['showHistory'] != false}">
+            <span>Показывать историю</span>
+        </label>
+    </div>
+    <input type="hidden" name="mode" th:value="${activity.instance.config['mode'] ?: 'prizes'}">
+
+    <div class="activity-editor-section">
+        <div class="activity-editor-heading">
+            <strong>Сегменты колеса</strong>
+            <button class="secondary" type="button"
+                    th:onclick="|addActivityRow('wheel-segment-template-${activity.instance.id}', 'wheel-segments-${activity.instance.id}')|">Добавить сегмент</button>
+        </div>
+        <div class="activity-row-list" th:id="'wheel-segments-' + ${activity.instance.id}">
+            <div class="activity-editor-row wheel-editor-row"
+                 th:each="segment : ${activity.instance.config['segments']}">
+                <input name="segmentTexts" th:value="${segment['text']}" placeholder="Текст сегмента" required>
+                <input name="segmentColors" type="color" th:value="${segment['color'] ?: '#C9A84C'}">
+                <input name="segmentWeights" type="number" min="0" th:value="${segment['weight'] ?: 1}" aria-label="Вес">
+                <button class="ghost danger" type="button" onclick="removeActivityRow(this)">Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <template th:id="'wheel-segment-template-' + ${activity.instance.id}">
+        <div class="activity-editor-row wheel-editor-row">
+            <input name="segmentTexts" placeholder="Текст сегмента" required>
+            <input name="segmentColors" type="color" value="#C9A84C">
+            <input name="segmentWeights" type="number" min="0" value="1" aria-label="Вес">
+            <button class="ghost danger" type="button" onclick="removeActivityRow(this)">Удалить</button>
+        </div>
+    </template>
+</th:block>
+</html>

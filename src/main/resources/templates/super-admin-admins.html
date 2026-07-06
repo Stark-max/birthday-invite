@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Администраторы</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <th:block th:replace="~{fragments/theme-variables :: theme-vars(${theme})}"></th:block>
+</head>
+<body>
+<main class="page">
+    <header class="topbar">
+        <div>
+            <div class="brand">Супер-админ</div>
+            <h1>Администраторы</h1>
+        </div>
+        <nav class="nav-links">
+            <a th:href="@{/super-admin}">Обзор</a>
+            <a th:href="@{/super-admin/events}">Приглашения</a>
+            <a th:href="@{/admin/logout}">Выйти</a>
+        </nav>
+    </header>
+    <div class="notice success" th:if="${param.created}">Администратор создан.</div>
+    <div class="notice success" th:if="${param.reset}">Временный пароль установлен.</div>
+    <div class="notice success" th:if="${param.passwordChanged}">Пароль обновлён.</div>
+    <div class="notice declined" th:if="${error}" th:text="${error}">Ошибка</div>
+
+    <section class="card stack">
+        <h2>Новый администратор</h2>
+        <form class="admin-create-grid" method="post" th:action="@{/super-admin/admins}">
+            <label>Логин
+                <input name="login" pattern="[A-Za-z0-9._-]{3,120}" required>
+            </label>
+            <label>Имя
+                <input name="displayName" required>
+            </label>
+            <label>Временный пароль
+                <input name="temporaryPassword" type="password" minlength="6" required>
+            </label>
+            <button type="submit">Создать</button>
+        </form>
+    </section>
+
+    <section class="admin-table-section">
+        <h2>Все учётные записи</h2>
+        <div class="table-scroll">
+            <table class="table">
+                <thead><tr><th>Администратор</th><th>Роль</th><th>Статус</th><th>Доступ</th><th>Смена пароля</th></tr></thead>
+                <tbody>
+                <tr th:each="admin : ${admins}">
+                    <td><strong th:text="${admin.displayName}">Имя</strong><div class="muted" th:text="${admin.login}">login</div></td>
+                    <td th:text="${admin.role}">ADMIN</td>
+                    <td>
+                        <span class="status" th:classappend="${admin.enabled ? ' accepted' : ' declined'}"
+                              th:text="${admin.enabled ? (admin.mustChangePassword ? 'Смена пароля' : 'Активен') : 'Отключён'}">Статус</span>
+                    </td>
+                    <td>
+                        <form th:if="${admin.role.name() == 'ADMIN'}" method="post"
+                              th:action="@{/super-admin/admins/{id}/enabled(id=${admin.id})}">
+                            <input type="hidden" name="enabled" th:value="${!admin.enabled}">
+                            <button class="secondary" type="submit" th:text="${admin.enabled ? 'Отключить' : 'Включить'}">Изменить</button>
+                        </form>
+                        <span class="muted" th:if="${admin.role.name() == 'SUPER_ADMIN'}">Защищён</span>
+                    </td>
+                    <td>
+                        <form class="inline-reset inline-password-form" th:if="${admin.role.name() == 'ADMIN'}" method="post"
+                              th:action="@{/super-admin/admins/{id}/password(id=${admin.id})}">
+                            <input name="newPassword" type="password" minlength="6" placeholder="Новый пароль" autocomplete="new-password" required>
+                            <input name="confirmPassword" type="password" minlength="6" placeholder="Повтор пароля" autocomplete="new-password" required>
+                            <label class="inline-check">
+                                <input type="checkbox" name="mustChangePassword" value="true">
+                                <span>Попросить сменить при входе</span>
+                            </label>
+                            <button class="secondary" type="submit">Сохранить</button>
+                        </form>
+                        <span class="muted" th:if="${admin.role.name() == 'SUPER_ADMIN'}">Через страницу пароля</span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+</body>
+</html>
