@@ -15,7 +15,7 @@
 - Персональная ссылка `/invite/{code}` для каждого гостя.
 - RSVP-ответы: придёт, не сможет, пожелание.
 - Система тем: глобальная тема, персональная тема гостя, кастомные пресеты.
-- Активности: викторина, колесо фортуны, правда или действие, фото-челлендж.
+- Активности: викторина, колесо фортуны, правда или действие, мем-челлендж.
 - Общий лидерборд по очкам активностей.
 
 ### Технологии
@@ -114,7 +114,7 @@ Birthday Invite App is a personal birthday invitation web app. The host creates 
 - Unique `/invite/{code}` link per guest.
 - RSVP statuses: accepted, declined, pending.
 - Theme system with built-in presets, global event theme, personal guest theme, and custom presets.
-- Modular activities: quiz, wheel of fortune, truth or dare, and photo challenge.
+- Modular activities: quiz, wheel of fortune, truth or dare, and meme challenge with unique meme cards per guest.
 - Event-wide leaderboard.
 
 ### Stack

@@ -67,8 +67,22 @@ class GuestControllerActivityRenderTest {
         guest.setName("Гость");
         guest.setStatus(RsvpStatus.ACCEPTED);
 
-        ActivityInstance photo = activity(10L, event, "photo-challenge", "Фото-челлендж",
-                Map.of("challenges", List.of("Фото 1")));
+        ActivityInstance photo = activity(10L, event, "photo-challenge", "Мем-челлендж",
+                Map.of(
+                        "title", "Мем-челлендж",
+                        "instructions", "Придумай подпись",
+                        "memes", List.of(Map.of(
+                                "id", "drake",
+                                "name", "Drake Hotline Bling",
+                                "region", "US",
+                                "prompt", "Выбор гостя",
+                                "imageUrl", "",
+                                "accent", "#ffd166",
+                                "emoji", "🎧"
+                        )),
+                        "showGallery", true,
+                        "allowVoting", true
+                ));
         ActivityInstance quiz = activity(11L, event, "quiz", "Викторина",
                 Map.of("questions", List.of(Map.of(
                         "id", "q1",
@@ -82,7 +96,7 @@ class GuestControllerActivityRenderTest {
         when(eventService.getWishlist(1L)).thenReturn(List.of());
         when(guestService.getAcceptedGuests(1L)).thenReturn(List.of(guest));
         when(activityService.getEnabledActivityViews(1L)).thenReturn(List.of(
-                view(photo, "📸", "{\"challenges\":[\"Фото 1\"]}"),
+                view(photo, "🖼", "{\"memes\":[{\"id\":\"drake\",\"name\":\"Drake Hotline Bling\"}]}"),
                 view(quiz, "🧠", "{\"questions\":[{\"id\":\"q1\",\"text\":\"Вопрос\"}]}")
         ));
         when(activityService.getEventLeaderboard(1L)).thenReturn(List.of());

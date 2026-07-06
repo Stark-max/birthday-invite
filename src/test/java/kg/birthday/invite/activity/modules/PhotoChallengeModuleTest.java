@@ -16,45 +16,96 @@ class PhotoChallengeModuleTest {
     private final PhotoChallengeModule module = new PhotoChallengeModule();
 
     @Test
-    void completesChallengeOnceAndBlocksDuplicateCompletion() {
+    void defaultConfigContainsFiftyMemeTemplates() {
+        List<?> memes = (List<?>) module.getDefaultConfig().get("memes");
+
+        assertThat(memes).hasSize(50);
+    }
+
+    @Test
+    void assignsUniqueMemeCardsAcrossGuests() {
         ActivityResult first = module.processAction(
                 module.getDefaultConfig(),
-                Map.of("guestId", 1, "action", "complete", "challengeIndex", 0),
+                Map.of("guestId", 1, "action", "assign"),
+                List.of()
+        );
+        ActivityResultEntity firstAssignment = result(10L, 1L, first.getData());
+
+        ActivityResult second = module.processAction(
+                module.getDefaultConfig(),
+                Map.of("guestId", 2, "action", "assign"),
+                List.of(firstAssignment)
+        );
+
+        assertThat(first.isSuccess()).isTrue();
+        assertThat(second.isSuccess()).isTrue();
+        assertThat(second.getData().get("memeId")).isNotEqualTo(first.getData().get("memeId"));
+    }
+
+    @Test
+    void blocksDuplicateAssignmentForSameGuest() {
+        ActivityResult first = module.processAction(
+                module.getDefaultConfig(),
+                Map.of("guestId", 1, "action", "assign"),
                 List.of()
         );
         ActivityResultEntity previous = result(10L, 1L, first.getData());
 
         ActivityResult duplicate = module.processAction(
                 module.getDefaultConfig(),
-                Map.of("guestId", 1, "action", "complete", "challengeIndex", 0),
+                Map.of("guestId", 1, "action", "assign"),
                 List.of(previous)
         );
 
-        assertThat(first.isSuccess()).isTrue();
-        assertThat(first.getPoints()).isEqualTo(5);
         assertThat(duplicate.isSuccess()).isFalse();
     }
 
     @Test
-    void rejectsUnknownChallengeIndex() {
-        ActivityResult result = module.processAction(module.getDefaultConfig(), Map.of("challengeIndex", 99), List.of());
+    void submitsCaptionOnlyAfterAssignment() {
+        ActivityResult noAssignment = module.processAction(
+                module.getDefaultConfig(),
+                Map.of("guestId", 1, "action", "submit", "caption", "Когда торт уже близко"),
+                List.of()
+        );
+        ActivityResult assignment = module.processAction(
+                module.getDefaultConfig(),
+                Map.of("guestId", 1, "action", "assign"),
+                List.of()
+        );
+        ActivityResultEntity assigned = result(10L, 1L, assignment.getData());
 
-        assertThat(result.isSuccess()).isFalse();
+        ActivityResult submit = module.processAction(
+                module.getDefaultConfig(),
+                Map.of("guestId", 1, "action", "submit", "caption", "Когда торт уже близко"),
+                List.of(assigned)
+        );
+
+        assertThat(noAssignment.isSuccess()).isFalse();
+        assertThat(submit.isSuccess()).isTrue();
+        assertThat(submit.getPoints()).isEqualTo(5);
+        assertThat(submit.getData()).containsEntry("action", "submit");
+        assertThat(submit.getData()).containsEntry("caption", "Когда торт уже близко");
     }
 
     @Test
-    void voteAddsPointToCompletedChallengeOwner() {
-        ActivityResult complete = module.processAction(
+    void voteAddsPointToSubmittedMemeOwner() {
+        ActivityResult assignment = module.processAction(
                 module.getDefaultConfig(),
-                Map.of("guestId", 1, "action", "complete", "challengeIndex", 0),
+                Map.of("guestId", 1, "action", "assign"),
                 List.of()
         );
-        ActivityResultEntity completedResult = result(10L, 1L, complete.getData());
+        ActivityResultEntity assigned = result(10L, 1L, assignment.getData());
+        ActivityResult submit = module.processAction(
+                module.getDefaultConfig(),
+                Map.of("guestId", 1, "action", "submit", "caption", "Лучший мем вечера"),
+                List.of(assigned)
+        );
+        ActivityResultEntity submitted = result(11L, 1L, submit.getData());
 
         ActivityResult vote = module.processAction(
                 module.getDefaultConfig(),
-                Map.of("guestId", 2, "action", "vote", "targetResultId", 10),
-                List.of(completedResult)
+                Map.of("guestId", 2, "action", "vote", "targetResultId", 11),
+                List.of(assigned, submitted)
         );
 
         assertThat(vote.isSuccess()).isTrue();
@@ -65,30 +116,34 @@ class PhotoChallengeModuleTest {
 
     @Test
     void blocksSelfVoteAndDuplicateVote() {
-        ActivityResult complete = module.processAction(
+        ActivityResult assignment = module.processAction(
                 module.getDefaultConfig(),
-                Map.of("guestId", 1, "action", "complete", "challengeIndex", 0),
+                Map.of("guestId", 1, "action", "assign"),
                 List.of()
         );
-        ActivityResultEntity completedResult = result(10L, 1L, complete.getData());
+        ActivityResultEntity assigned = result(10L, 1L, assignment.getData());
+        ActivityResult submit = module.processAction(
+                module.getDefaultConfig(),
+                Map.of("guestId", 1, "action", "submit", "caption", "Лучший мем вечера"),
+                List.of(assigned)
+        );
+        ActivityResultEntity submitted = result(11L, 1L, submit.getData());
 
         ActivityResult selfVote = module.processAction(
                 module.getDefaultConfig(),
-                Map.of("guestId", 1, "action", "vote", "targetResultId", 10),
-                List.of(completedResult)
+                Map.of("guestId", 1, "action", "vote", "targetResultId", 11),
+                List.of(assigned, submitted)
         );
-
         ActivityResult vote = module.processAction(
                 module.getDefaultConfig(),
-                Map.of("guestId", 2, "action", "vote", "targetResultId", 10),
-                List.of(completedResult)
+                Map.of("guestId", 2, "action", "vote", "targetResultId", 11),
+                List.of(assigned, submitted)
         );
-        ActivityResultEntity previousVote = result(11L, 1L, vote.getData());
-
+        ActivityResultEntity previousVote = result(12L, 1L, vote.getData());
         ActivityResult duplicateVote = module.processAction(
                 module.getDefaultConfig(),
-                Map.of("guestId", 2, "action", "vote", "targetResultId", 10),
-                List.of(completedResult, previousVote)
+                Map.of("guestId", 2, "action", "vote", "targetResultId", 11),
+                List.of(assigned, submitted, previousVote)
         );
 
         assertThat(selfVote.isSuccess()).isFalse();

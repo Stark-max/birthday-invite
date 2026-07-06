@@ -380,14 +380,41 @@ public class ActivityService {
 
     private Map<String, Object> photoChallengeConfig(MultiValueMap<String, String> form) {
         Map<String, Object> config = new LinkedHashMap<>();
-        config.put("title", firstOrDefault(form, "title", "Фото-челлендж"));
-        config.put("challenges", values(form, "challengeTexts").stream()
-                .map(ActivityService::trimToNull)
-                .filter(Objects::nonNull)
-                .toList());
+        config.put("title", firstOrDefault(form, "title", "Мем-челлендж"));
+        config.put("instructions", firstOrDefault(form, "instructions", "Получи мем и придумай подпись про праздник."));
+        config.put("memes", memeTemplates(form));
         config.put("showGallery", checked(form, "showGallery"));
         config.put("allowVoting", checked(form, "allowVoting"));
+        config.put("pointsForCaption", Math.max(0, number(firstRaw(form, "pointsForCaption"), 5)));
+        config.put("pointsForVote", Math.max(0, number(firstRaw(form, "pointsForVote"), 1)));
         return config;
+    }
+
+    private List<Map<String, Object>> memeTemplates(MultiValueMap<String, String> form) {
+        List<String> ids = values(form, "memeIds");
+        List<String> names = values(form, "memeNames");
+        List<String> regions = values(form, "memeRegions");
+        List<String> imageUrls = values(form, "memeImageUrls");
+        List<String> prompts = values(form, "memePrompts");
+        List<String> accents = values(form, "memeAccents");
+        List<String> emojis = values(form, "memeEmojis");
+        List<Map<String, Object>> memes = new java.util.ArrayList<>();
+        for (int i = 0; i < names.size(); i++) {
+            String name = trimToNull(names.get(i));
+            if (name == null) {
+                continue;
+            }
+            Map<String, Object> meme = new LinkedHashMap<>();
+            meme.put("id", firstText(valueAt(ids, i), slug(name)));
+            meme.put("name", name);
+            meme.put("region", firstText(valueAt(regions, i), "global"));
+            meme.put("imageUrl", firstText(valueAt(imageUrls, i), ""));
+            meme.put("prompt", firstText(valueAt(prompts, i), "Придумай подпись"));
+            meme.put("accent", color(valueAt(accents, i), colorForIndex(i)));
+            meme.put("emoji", firstText(valueAt(emojis, i), "😂"));
+            memes.add(meme);
+        }
+        return memes;
     }
 
     private Map<String, Object> truthOrDareConfig(MultiValueMap<String, String> form) {
@@ -487,6 +514,17 @@ public class ActivityService {
             return null;
         }
         return value.trim();
+    }
+
+    private static String slug(String value) {
+        String text = trimToNull(value);
+        if (text == null) {
+            return "meme";
+        }
+        String slug = text.toLowerCase(java.util.Locale.ROOT)
+                .replaceAll("[^a-z0-9а-яё]+", "-")
+                .replaceAll("(^-|-$)", "");
+        return slug.isBlank() ? "meme" : slug;
     }
 
     private static class GuestScoreAccumulator {

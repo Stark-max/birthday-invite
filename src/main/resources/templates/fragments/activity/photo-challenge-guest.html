@@ -1,24 +1,71 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <th:block th:fragment="content(activity, guest)">
-    <div class="challenge-list">
-        <div class="challenge-item" th:each="challenge, iter : ${activity.instance.config['challenges']}">
-            <span th:text="${challenge}">Челлендж</span>
-            <button type="button" th:onclick="|completeChallenge(${activity.instance.id}, ${guest.id}, ${iter.index})|">Готово</button>
+    <div class="meme-challenge stack">
+        <div class="meme-challenge-hero">
+            <div>
+                <h4 th:text="${activity.instance.config['title']}">Мем-челлендж</h4>
+                <p class="muted" th:text="${activity.instance.config['instructions']}">Получи мем и придумай подпись.</p>
+            </div>
+            <button type="button" th:onclick="|drawMeme(${activity.instance.id}, ${guest.id})|">Получить мем</button>
         </div>
-    </div>
-    <div class="challenge-gallery stack" th:if="${activity.instance.config['showGallery'] != false}">
-        <h4>Выполненные челленджи</h4>
-        <div class="leaderboard-row" th:each="result : ${activity.results}"
-             th:if="${result.resultData['type'] == 'photo-challenge' and result.resultData['action'] == 'complete'}">
-            <span th:text="${result.guest.name ?: result.guest.label}">Гость</span>
-            <span th:text="${result.resultData['challenge']}">Челлендж</span>
-            <button class="secondary" type="button"
-                    th:if="${activity.instance.config['allowVoting'] and result.guest.id != guest.id}"
-                    th:onclick="|voteChallenge(${activity.instance.id}, ${guest.id}, ${result.id})|">+1</button>
-            <span class="muted" th:if="${result.guest.id == guest.id}">твой</span>
+
+        <div th:id="'meme-draw-' + ${activity.instance.id}" class="meme-draw-zone"></div>
+
+        <div th:each="result : ${activity.results}"
+             th:if="${result.guest.id == guest.id and result.resultData['type'] == 'meme-challenge' and result.resultData['action'] == 'assign'}"
+             class="meme-card"
+             th:style="'--meme-accent:' + ${result.resultData['memeAccent']}">
+            <img th:if="${result.resultData['memeImageUrl'] != ''}" th:src="${result.resultData['memeImageUrl']}" th:alt="${result.resultData['memeName']}">
+            <div class="meme-card-fallback" th:if="${result.resultData['memeImageUrl'] == ''}">
+                <span th:text="${result.resultData['memeEmoji']}">😂</span>
+            </div>
+            <div class="meme-card-body">
+                <span class="meme-region" th:text="${result.resultData['memeRegion']}">US</span>
+                <strong th:text="${result.resultData['memeName']}">Meme</strong>
+                <p th:text="${result.resultData['memePrompt']}">Prompt</p>
+            </div>
         </div>
+
+        <form class="meme-caption-form" th:onsubmit="|submitMemeCaption(event, ${activity.instance.id}, ${guest.id})|">
+            <label th:for="'meme-caption-' + ${activity.instance.id}">Подпись к твоему мему</label>
+            <div class="meme-caption-row">
+                <input th:id="'meme-caption-' + ${activity.instance.id}" name="caption" maxlength="180"
+                       placeholder="Например: когда пришёл за тортом, а попал в конкурс" required>
+                <button class="secondary" type="submit">Отправить</button>
+            </div>
+        </form>
+
+        <div class="challenge-gallery stack" th:if="${activity.instance.config['showGallery'] != false}">
+            <h4>Мемы гостей</h4>
+            <div class="meme-gallery-grid">
+                <div class="meme-submission"
+                     th:each="result : ${activity.results}"
+                     th:if="${result.resultData['type'] == 'meme-challenge' and result.resultData['action'] == 'submit'}"
+                     th:style="'--meme-accent:' + ${result.resultData['memeAccent']}">
+                    <div class="meme-submission-media">
+                        <img th:if="${result.resultData['memeImageUrl'] != ''}" th:src="${result.resultData['memeImageUrl']}" th:alt="${result.resultData['memeName']}">
+                        <div class="meme-card-fallback" th:if="${result.resultData['memeImageUrl'] == ''}">
+                            <span th:text="${result.resultData['memeEmoji']}">😂</span>
+                        </div>
+                    </div>
+                    <div class="meme-submission-body">
+                        <span class="meme-region" th:text="${result.resultData['memeRegion']}">US</span>
+                        <strong th:text="${result.resultData['memeName']}">Meme</strong>
+                        <p th:text="${result.resultData['caption']}">Caption</p>
+                        <div class="meme-submission-actions">
+                            <span th:text="${result.guest.name ?: result.guest.label}">Гость</span>
+                            <button class="secondary" type="button"
+                                    th:if="${activity.instance.config['allowVoting'] and result.guest.id != guest.id}"
+                                    th:onclick="|voteChallenge(${activity.instance.id}, ${guest.id}, ${result.id})|">+1</button>
+                            <span class="muted" th:if="${result.guest.id == guest.id}">твой</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <p class="muted" th:id="'challenge-result-' + ${activity.instance.id}"></p>
     </div>
-    <p class="muted" th:id="'challenge-result-' + ${activity.instance.id}"></p>
 </th:block>
 </html>

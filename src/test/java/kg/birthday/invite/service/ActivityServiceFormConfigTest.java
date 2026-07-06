@@ -103,21 +103,37 @@ class ActivityServiceFormConfigTest {
     }
 
     @Test
-    void photoChallengeFormBuildsChallengeConfig() {
+    void photoChallengeFormBuildsMemeConfig() {
         ActivityInstance instance = instance("photo-challenge");
         when(activityInstanceRepository.findById(1L)).thenReturn(Optional.of(instance));
         LinkedMultiValueMap<String, String> form = new LinkedMultiValueMap<>();
-        form.add("title", "Фото");
+        form.add("title", "Мемы");
+        form.add("instructions", "Придумай подпись");
         form.add("showGallery", "true");
-        form.add("challengeTexts", "Селфи");
-        form.add("challengeTexts", "Групповое фото");
+        form.add("allowVoting", "true");
+        form.add("pointsForCaption", "8");
+        form.add("pointsForVote", "2");
+        form.add("memeIds", "drake");
+        form.add("memeNames", "Drake Hotline Bling");
+        form.add("memeRegions", "US");
+        form.add("memeImageUrls", "");
+        form.add("memePrompts", "Выбор гостя");
+        form.add("memeAccents", "#ffd166");
+        form.add("memeEmojis", "🎧");
 
         ActivityInstance updated = activityService.updateActivityConfigFromForm(1L, form);
 
-        assertThat(updated.getConfig()).containsEntry("title", "Фото");
+        assertThat(updated.getConfig()).containsEntry("title", "Мемы");
+        assertThat(updated.getConfig()).containsEntry("instructions", "Придумай подпись");
         assertThat(updated.getConfig()).containsEntry("showGallery", true);
-        assertThat(updated.getConfig()).containsEntry("allowVoting", false);
-        assertThat(updated.getConfig().get("challenges")).isEqualTo(List.of("Селфи", "Групповое фото"));
+        assertThat(updated.getConfig()).containsEntry("allowVoting", true);
+        assertThat(updated.getConfig()).containsEntry("pointsForCaption", 8);
+        assertThat(updated.getConfig()).containsEntry("pointsForVote", 2);
+        List<?> memes = (List<?>) updated.getConfig().get("memes");
+        assertThat(memes).hasSize(1);
+        Map<?, ?> meme = (Map<?, ?>) memes.get(0);
+        assertThat(meme.get("id")).isEqualTo("drake");
+        assertThat(meme.get("name")).isEqualTo("Drake Hotline Bling");
     }
 
     @Test

@@ -5,12 +5,21 @@
         <label>Название в гостевой странице
             <input name="displayName" th:value="${activity.instance.displayName}">
         </label>
-        <label>Заголовок фото-челленджа
+        <label>Заголовок мем-челленджа
             <input name="title" th:value="${activity.instance.config['title']}">
+        </label>
+        <label>Очки за подпись
+            <input name="pointsForCaption" type="number" min="0" th:value="${activity.instance.config['pointsForCaption'] ?: 5}">
+        </label>
+        <label>Очки за голос
+            <input name="pointsForVote" type="number" min="0" th:value="${activity.instance.config['pointsForVote'] ?: 1}">
+        </label>
+        <label class="activity-editor-wide">Инструкция для гостей
+            <input name="instructions" th:value="${activity.instance.config['instructions']}" placeholder="Получи мем и придумай подпись про праздник">
         </label>
         <label class="checkbox-line">
             <input name="showGallery" type="checkbox" value="true" th:checked="${activity.instance.config['showGallery'] != false}">
-            <span>Показывать галерею выполненных заданий</span>
+            <span>Показывать галерею готовых мемов</span>
         </label>
         <label class="checkbox-line">
             <input name="allowVoting" type="checkbox" value="true" th:checked="${activity.instance.config['allowVoting'] != false}">
@@ -20,22 +29,35 @@
 
     <div class="activity-editor-section">
         <div class="activity-editor-heading">
-            <strong>Фото-задания</strong>
+            <strong>Мем-шаблоны</strong>
             <button class="secondary" type="button"
-                    th:onclick="|addActivityRow('photo-challenge-template-${activity.instance.id}', 'photo-challenges-${activity.instance.id}')|">Добавить задание</button>
+                    th:onclick="|addActivityRow('meme-template-${activity.instance.id}', 'meme-templates-${activity.instance.id}')|">Добавить мем</button>
         </div>
-        <div class="activity-row-list" th:id="'photo-challenges-' + ${activity.instance.id}">
-            <div class="activity-editor-row single-field-row"
-                 th:each="challenge : ${activity.instance.config['challenges']}">
-                <input name="challengeTexts" th:value="${challenge}" placeholder="Например: селфи с именинником" required>
+        <p class="muted">Если ссылка на картинку пустая, гостям показывается авторская карточка с emoji и названием. Это безопаснее для публикации на GitHub.</p>
+        <div class="activity-row-list meme-admin-list" th:id="'meme-templates-' + ${activity.instance.id}">
+            <div class="activity-editor-row meme-editor-row"
+                 th:each="meme : ${activity.instance.config['memes']}">
+                <input name="memeIds" th:value="${meme['id']}" placeholder="id">
+                <input name="memeNames" th:value="${meme['name']}" placeholder="Название мема" required>
+                <input name="memeRegions" th:value="${meme['region']}" placeholder="US / CIS">
+                <input name="memeImageUrls" th:value="${meme['imageUrl']}" placeholder="https://...">
+                <input name="memePrompts" th:value="${meme['prompt']}" placeholder="Подсказка для подписи">
+                <input name="memeAccents" type="color" th:value="${meme['accent'] ?: '#ffd166'}">
+                <input name="memeEmojis" th:value="${meme['emoji'] ?: '😂'}" maxlength="4" placeholder="😂">
                 <button class="ghost danger" type="button" onclick="removeActivityRow(this)">Удалить</button>
             </div>
         </div>
     </div>
 
-    <template th:id="'photo-challenge-template-' + ${activity.instance.id}">
-        <div class="activity-editor-row single-field-row">
-            <input name="challengeTexts" placeholder="Например: селфи с именинником" required>
+    <template th:id="'meme-template-' + ${activity.instance.id}">
+        <div class="activity-editor-row meme-editor-row">
+            <input name="memeIds" placeholder="id">
+            <input name="memeNames" placeholder="Название мема" required>
+            <input name="memeRegions" placeholder="US / CIS">
+            <input name="memeImageUrls" placeholder="https://...">
+            <input name="memePrompts" placeholder="Подсказка для подписи">
+            <input name="memeAccents" type="color" value="#ffd166">
+            <input name="memeEmojis" value="😂" maxlength="4" placeholder="😂">
             <button class="ghost danger" type="button" onclick="removeActivityRow(this)">Удалить</button>
         </div>
     </template>
