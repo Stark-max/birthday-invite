@@ -1,6 +1,9 @@
 package kg.birthday.invite.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import kg.birthday.invite.activity.modules.CountdownChallengeModule;
+import kg.birthday.invite.activity.modules.GuestCertificatesModule;
+import kg.birthday.invite.activity.modules.GuessGuestModule;
 import kg.birthday.invite.activity.modules.PhotoChallengeModule;
 import kg.birthday.invite.activity.modules.QuizModule;
 import kg.birthday.invite.activity.modules.TruthOrDareModule;
@@ -31,6 +34,7 @@ class ActivityServiceFormConfigTest {
 
     ActivityInstanceRepository activityInstanceRepository;
     ActivityResultRepository activityResultRepository;
+    GuestRepository guestRepository;
     ActivityService activityService;
 
     @BeforeEach
@@ -38,12 +42,15 @@ class ActivityServiceFormConfigTest {
         activityInstanceRepository = mock(ActivityInstanceRepository.class);
         activityResultRepository = mock(ActivityResultRepository.class);
         EventRepository eventRepository = mock(EventRepository.class);
-        GuestRepository guestRepository = mock(GuestRepository.class);
+        guestRepository = mock(GuestRepository.class);
         ActivityRegistry registry = new ActivityRegistry(List.of(
                 new WheelOfFortuneModule(),
                 new QuizModule(),
                 new PhotoChallengeModule(),
-                new TruthOrDareModule()
+                new TruthOrDareModule(),
+                new GuessGuestModule(),
+                new CountdownChallengeModule(),
+                new GuestCertificatesModule()
         ));
         activityService = new ActivityService(
                 registry,
@@ -158,6 +165,121 @@ class ActivityServiceFormConfigTest {
     }
 
     @Test
+    void guessGuestFormBuildsRoundsWithPublicGuestNames() {
+        ActivityInstance instance = instance("guess-guest");
+        when(activityInstanceRepository.findById(1L)).thenReturn(Optional.of(instance));
+        Guest guest = new Guest();
+        guest.setId(12L);
+        guest.setName("Айбек");
+        when(guestRepository.findAllById(any())).thenReturn(List.of(guest));
+        LinkedMultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("title", "Угадай");
+        form.add("description", "Подсказки");
+        form.add("optionsCount", "2");
+        form.add("shuffleOptions", "true");
+        form.add("showCorrectAnswer", "true");
+        form.add("showLeaderboard", "true");
+        form.add("useOnlyAcceptedGuests", "true");
+        form.add("guessRoundIds", "r1");
+        form.add("guessClues", "Знает именинника со школы");
+        form.add("guessAnswerGuestIds", "12");
+        form.add("guessOptionGuestIds", "12");
+        form.add("guessPoints", "9");
+
+        ActivityInstance updated = activityService.updateActivityConfigFromForm(1L, form);
+
+        List<?> rounds = (List<?>) updated.getConfig().get("rounds");
+        assertThat(rounds).hasSize(1);
+        Map<?, ?> round = (Map<?, ?>) rounds.get(0);
+        assertThat(round.get("answerGuestId")).isEqualTo(12L);
+        assertThat(round.get("answerGuestName")).isEqualTo("Айбек");
+        assertThat(round.get("points")).isEqualTo(9);
+    }
+
+    @Test
+    void countdownFormBuildsTaskConfig() {
+        ActivityInstance instance = instance("countdown-challenge");
+        when(activityInstanceRepository.findById(1L)).thenReturn(Optional.of(instance));
+        LinkedMultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("title", "До праздника");
+        form.add("description", "Каждый день");
+        form.add("timezone", "Asia/Bishkek");
+        form.add("unlockMode", "daily");
+        form.add("missedDaysPolicy", "allow_previous");
+        form.add("showCountdownTimer", "true");
+        form.add("showProgress", "true");
+        form.add("allowLateCompletion", "true");
+        form.add("countdownTaskIds", "day-1");
+        form.add("countdownTaskOffsets", "1");
+        form.add("countdownTaskTitles", "1 день");
+        form.add("countdownTaskDescriptions", "Подтверди готовность");
+        form.add("countdownTaskTypes", "checkbox");
+        form.add("countdownTaskOptions", "");
+        form.add("countdownTaskRequired", "true");
+        form.add("countdownTaskCodes", "");
+        form.add("countdownTaskPoints", "6");
+
+        ActivityInstance updated = activityService.updateActivityConfigFromForm(1L, form);
+
+        List<?> tasks = (List<?>) updated.getConfig().get("tasks");
+        assertThat(tasks).hasSize(1);
+        Map<?, ?> task = (Map<?, ?>) tasks.get(0);
+        assertThat(task.get("id")).isEqualTo("day-1");
+        assertThat(task.get("type")).isEqualTo("checkbox");
+        assertThat(task.get("points")).isEqualTo(6);
+    }
+
+    @Test
+    void guestCertificatesFormBuildsCertificateTypes() {
+        ActivityInstance instance = instance("guest-certificates");
+        when(activityInstanceRepository.findById(1L)).thenReturn(Optional.of(instance));
+        LinkedMultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("title", "Сертификаты");
+        form.add("description", "Награды");
+        form.add("template", "elegant-gold");
+        form.add("allowGuestDownload", "true");
+        form.add("allowGuestShare", "true");
+        form.add("showOnGuestPage", "true");
+        form.add("autoGenerateEnabled", "true");
+        form.add("certificateText", "{guestName} получает «{certificateTitle}»");
+        form.add("footerText", "Спасибо");
+        form.add("certificateSlugs", "best");
+        form.add("certificateTitles", "Лучший гость");
+        form.add("certificateDescriptions", "За активность");
+        form.add("certificateSources", "total_leaderboard");
+        form.add("certificateActivitySlugs", "");
+        form.add("certificateRanks", "1");
+
+        ActivityInstance updated = activityService.updateActivityConfigFromForm(1L, form);
+
+        List<?> types = (List<?>) updated.getConfig().get("certificateTypes");
+        assertThat(types).hasSize(1);
+        Map<?, ?> type = (Map<?, ?>) types.get(0);
+        assertThat(type.get("slug")).isEqualTo("best");
+        assertThat(type.get("source")).isEqualTo("total_leaderboard");
+    }
+
+    @Test
+    void eventLeaderboardIgnoresZeroPointCertificateResults() {
+        ActivityInstance quiz = instance("quiz");
+        quiz.setDisplayName("Викторина");
+        ActivityInstance certificates = instance("guest-certificates");
+        certificates.setDisplayName("Сертификаты");
+        Guest guest = new Guest();
+        guest.setId(3L);
+        guest.setName("Алина");
+        ActivityResultEntity points = result(quiz, guest, 5, Map.of("type", "quiz"));
+        ActivityResultEntity certificate = result(certificates, guest, 0, Map.of("type", "guest-certificate"));
+        when(activityResultRepository.findAllByActivityInstance_Event_Id(10L)).thenReturn(List.of(certificate, points));
+
+        List<kg.birthday.invite.dto.GuestScore> leaderboard = activityService.getEventLeaderboard(10L);
+
+        assertThat(leaderboard).hasSize(1);
+        assertThat(leaderboard.get(0).totalPoints()).isEqualTo(5);
+        assertThat(leaderboard.get(0).pointsByActivity()).containsOnlyKeys("Викторина");
+    }
+
+    @Test
     void disabledActivityViewsUseDisabledRepositoryRows() {
         ActivityInstance disabled = instance("wheel");
         disabled.setEnabled(false);
@@ -251,5 +373,14 @@ class ActivityServiceFormConfigTest {
         instance.setDisplayName("Old");
         instance.setEnabled(true);
         return instance;
+    }
+
+    private static ActivityResultEntity result(ActivityInstance instance, Guest guest, int points, Map<String, Object> data) {
+        ActivityResultEntity result = new ActivityResultEntity();
+        result.setActivityInstance(instance);
+        result.setGuest(guest);
+        result.setPoints(points);
+        result.setResultData(new java.util.LinkedHashMap<>(data));
+        return result;
     }
 }

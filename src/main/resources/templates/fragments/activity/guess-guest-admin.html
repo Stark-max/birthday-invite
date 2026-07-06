@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="content(activity)">
+    <div class="activity-editor-grid">
+        <label>Название в гостевой странице
+            <input name="displayName" th:value="${activity.instance.displayName}">
+        </label>
+        <label>Заголовок
+            <input name="title" th:value="${activity.instance.config['title']}">
+        </label>
+        <label>Количество вариантов
+            <input name="optionsCount" type="number" min="2" th:value="${activity.instance.config['optionsCount'] ?: 4}">
+        </label>
+        <label class="activity-editor-wide">Описание
+            <input name="description" th:value="${activity.instance.config['description']}">
+        </label>
+        <label class="checkbox-line">
+            <input name="shuffleOptions" type="checkbox" value="true" th:checked="${activity.instance.config['shuffleOptions'] != false}">
+            <span>Перемешивать варианты</span>
+        </label>
+        <label class="checkbox-line">
+            <input name="showCorrectAnswer" type="checkbox" value="true" th:checked="${activity.instance.config['showCorrectAnswer'] != false}">
+            <span>Показывать правильный ответ</span>
+        </label>
+        <label class="checkbox-line">
+            <input name="allowRetry" type="checkbox" value="true" th:checked="${activity.instance.config['allowRetry'] == true}">
+            <span>Разрешить повторное прохождение</span>
+        </label>
+        <label class="checkbox-line">
+            <input name="showLeaderboard" type="checkbox" value="true" th:checked="${activity.instance.config['showLeaderboard'] != false}">
+            <span>Показывать лидерборд</span>
+        </label>
+        <label class="checkbox-line">
+            <input name="useOnlyAcceptedGuests" type="checkbox" value="true" th:checked="${activity.instance.config['useOnlyAcceptedGuests'] != false}">
+            <span>Использовать только принятых гостей</span>
+        </label>
+    </div>
+
+    <div class="activity-editor-section">
+        <div class="activity-editor-heading">
+            <strong>Подсказки</strong>
+            <button class="secondary" type="button"
+                    th:onclick="|addActivityRow('guess-round-template-${activity.instance.id}', 'guess-rounds-${activity.instance.id}')|">Добавить подсказку</button>
+        </div>
+        <p class="muted">Для вариантов укажи ID гостей через запятую. Список принятых гостей показан ниже.</p>
+        <div class="guest-reference-list" th:if="${!#lists.isEmpty(acceptedGuests)}">
+            <span th:each="accepted : ${acceptedGuests}"
+                  th:text="${accepted.id + ' — ' + (accepted.name ?: accepted.label)}">1 — Гость</span>
+        </div>
+        <div class="activity-row-list" th:id="'guess-rounds-' + ${activity.instance.id}">
+            <div class="activity-editor-row guess-guest-editor-row" th:each="round : ${activity.instance.config['rounds']}">
+                <label>ID
+                    <input name="guessRoundIds" th:value="${round['id']}" required>
+                </label>
+                <label>Подсказка
+                    <textarea name="guessClues" rows="3" required th:text="${round['clue']}"></textarea>
+                </label>
+                <label>Правильный гость
+                    <select name="guessAnswerGuestIds" required>
+                        <option value="">Выбери гостя</option>
+                        <option th:each="accepted : ${acceptedGuests}"
+                                th:value="${accepted.id}"
+                                th:selected="${round['answerGuestId'] == accepted.id}"
+                                th:text="${accepted.name ?: accepted.label}">Гость</option>
+                    </select>
+                </label>
+                <label>ID вариантов ответа
+                    <textarea name="guessOptionGuestIds" rows="3"
+                              th:text="${#strings.listJoin(round['optionGuestIds'], ', ')}"
+                              placeholder="12, 15, 18, 21"></textarea>
+                </label>
+                <label>Очки
+                    <input name="guessPoints" type="number" min="0" th:value="${round['points'] ?: 10}">
+                </label>
+                <button class="ghost danger" type="button" onclick="removeActivityRow(this)">Удалить подсказку</button>
+            </div>
+        </div>
+    </div>
+
+    <template th:id="'guess-round-template-' + ${activity.instance.id}">
+        <div class="activity-editor-row guess-guest-editor-row">
+            <label>ID
+                <input name="guessRoundIds" value="r-new" required>
+            </label>
+            <label>Подсказка
+                <textarea name="guessClues" rows="3" required></textarea>
+            </label>
+            <label>Правильный гость
+                <select name="guessAnswerGuestIds" required>
+                    <option value="">Выбери гостя</option>
+                    <option th:each="accepted : ${acceptedGuests}"
+                            th:value="${accepted.id}"
+                            th:text="${accepted.name ?: accepted.label}">Гость</option>
+                </select>
+            </label>
+            <label>ID вариантов ответа
+                <textarea name="guessOptionGuestIds" rows="3" placeholder="12, 15, 18, 21"></textarea>
+            </label>
+            <label>Очки
+                <input name="guessPoints" type="number" min="0" value="10">
+            </label>
+            <button class="ghost danger" type="button" onclick="removeActivityRow(this)">Удалить подсказку</button>
+        </div>
+    </template>
+</th:block>
+</html>

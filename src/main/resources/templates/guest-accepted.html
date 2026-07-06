@@ -178,6 +178,15 @@
                     <th:block th:if="${activity.instance.moduleSlug == 'photo-challenge'}">
                         <th:block th:replace="~{fragments/activity/photo-challenge-guest :: content(${activity}, ${guest})}"></th:block>
                     </th:block>
+                    <th:block th:if="${activity.instance.moduleSlug == 'guess-guest'}">
+                        <th:block th:replace="~{fragments/activity/guess-guest-guest :: content(${activity}, ${guest})}"></th:block>
+                    </th:block>
+                    <th:block th:if="${activity.instance.moduleSlug == 'countdown-challenge'}">
+                        <th:block th:replace="~{fragments/activity/countdown-challenge-guest :: content(${activity}, ${guest}, ${event})}"></th:block>
+                    </th:block>
+                    <th:block th:if="${activity.instance.moduleSlug == 'guest-certificates'}">
+                        <th:block th:replace="~{fragments/activity/guest-certificates-guest :: content(${activity}, ${guest})}"></th:block>
+                    </th:block>
                 </div>
             </article>
         </div>
@@ -202,5 +211,8 @@
 <script th:src="@{/js/quiz.js}"></script>
 <script th:src="@{/js/wheel.js}"></script>
 <script th:src="@{/js/activities.js}"></script>
+<script th:src="@{/js/guess-guest.js}"></script>
+<script th:src="@{/js/countdown-challenge.js}"></script>
+<script th:src="@{/js/guest-certificates.js}"></script>
 </body>
 </html>

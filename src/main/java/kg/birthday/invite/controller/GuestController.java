@@ -2,6 +2,7 @@ package kg.birthday.invite.controller;
 
 import kg.birthday.invite.entity.Event;
 import kg.birthday.invite.entity.Guest;
+import kg.birthday.invite.entity.ActivityResultEntity;
 import kg.birthday.invite.enums.RsvpStatus;
 import kg.birthday.invite.service.ActivityService;
 import kg.birthday.invite.service.EventService;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import java.util.List;
 import java.util.Map;
 
 @Controller
@@ -83,6 +85,52 @@ public class GuestController {
             return "guest-declined";
         }
         return "guest";
+    }
+
+    @GetMapping("/invite/{code}/certificates")
+    public String certificates(@PathVariable String code, Model model) {
+        Guest guest = guestService.getGuestByCode(code).orElse(null);
+        if (guest == null) {
+            model.addAttribute("message", "Приглашение не найдено");
+            model.addAttribute("theme", themeService.defaultTheme());
+            return "error";
+        }
+        if (guest.getStatus() != RsvpStatus.ACCEPTED) {
+            return "redirect:/invite/" + code;
+        }
+        Event event = guest.getEvent();
+        List<ActivityResultEntity> certificates = activityService.getGuestCertificates(event.getId(), guest.getId());
+        model.addAttribute("event", event);
+        model.addAttribute("guest", guest);
+        model.addAttribute("certificates", certificates);
+        model.addAttribute("theme", themeService.getEffectiveTheme(guest));
+        return "guest-certificates";
+    }
+
+    @GetMapping("/invite/{code}/certificates/{resultId}")
+    public String certificate(
+            @PathVariable String code,
+            @PathVariable Long resultId,
+            Model model
+    ) {
+        Guest guest = guestService.getGuestByCode(code).orElse(null);
+        if (guest == null) {
+            model.addAttribute("message", "Приглашение не найдено");
+            model.addAttribute("theme", themeService.defaultTheme());
+            return "error";
+        }
+        Event event = guest.getEvent();
+        ActivityResultEntity certificate = activityService.getGuestCertificate(event.getId(), guest.getId(), resultId).orElse(null);
+        if (certificate == null) {
+            model.addAttribute("message", "Сертификат не найден");
+            model.addAttribute("theme", themeService.getEffectiveTheme(guest));
+            return "error";
+        }
+        model.addAttribute("event", event);
+        model.addAttribute("guest", guest);
+        model.addAttribute("certificate", certificate);
+        model.addAttribute("theme", themeService.getEffectiveTheme(guest));
+        return "certificate";
     }
 
     @PostMapping("/invite/{code}/respond")

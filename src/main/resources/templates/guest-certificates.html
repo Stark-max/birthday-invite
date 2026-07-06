@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мои сертификаты</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="stylesheet" th:href="@{/css/activity.css}">
+    <th:block th:replace="~{fragments/theme-variables :: theme-vars(${theme})}"></th:block>
+</head>
+<body>
+<main class="page">
+    <header class="topbar">
+        <div>
+            <div class="brand">Сертификаты</div>
+            <h1>Мои награды</h1>
+            <p class="muted" th:text="${guest.name ?: guest.label}">Гость</p>
+        </div>
+        <nav class="nav-links">
+            <a th:href="@{/invite/{code}(code=${guest.code})}">Назад к приглашению</a>
+        </nav>
+    </header>
+
+    <section class="certificate-card-grid" th:if="${!#lists.isEmpty(certificates)}">
+        <a class="certificate-mini-card"
+           th:each="certificate : ${certificates}"
+           th:href="@{/invite/{code}/certificates/{resultId}(code=${guest.code}, resultId=${certificate.id})}">
+            <span th:text="${certificate.resultData['certificateCode']}">CERT</span>
+            <strong th:text="${certificate.resultData['certificateTitle']}">Сертификат</strong>
+            <small th:text="${certificate.resultData['certificateDescription']}">Описание</small>
+        </a>
+    </section>
+    <section class="card stack" th:if="${#lists.isEmpty(certificates)}">
+        <h2>Пока сертификатов нет</h2>
+        <p class="muted">Когда админ выдаст награды, они появятся здесь.</p>
+    </section>
+</main>
+</body>
+</html>

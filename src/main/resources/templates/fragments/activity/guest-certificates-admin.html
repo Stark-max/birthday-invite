@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="content(activity)">
+    <div class="activity-editor-grid">
+        <label>Название в гостевой странице
+            <input name="displayName" th:value="${activity.instance.displayName}">
+        </label>
+        <label>Заголовок
+            <input name="title" th:value="${activity.instance.config['title']}">
+        </label>
+        <label>Шаблон
+            <select name="template">
+                <option value="elegant-gold" th:selected="${activity.instance.config['template'] == 'elegant-gold'}">Elegant gold</option>
+                <option value="party-bright" th:selected="${activity.instance.config['template'] == 'party-bright'}">Party bright</option>
+                <option value="minimal" th:selected="${activity.instance.config['template'] == 'minimal'}">Minimal</option>
+            </select>
+        </label>
+        <label class="activity-editor-wide">Описание
+            <input name="description" th:value="${activity.instance.config['description']}">
+        </label>
+        <label class="activity-editor-wide">Текст сертификата
+            <textarea name="certificateText" rows="3" th:text="${activity.instance.config['certificateText']}"></textarea>
+        </label>
+        <label class="activity-editor-wide">Нижний текст
+            <input name="footerText" th:value="${activity.instance.config['footerText']}">
+        </label>
+        <label class="checkbox-line">
+            <input name="allowGuestDownload" type="checkbox" value="true" th:checked="${activity.instance.config['allowGuestDownload'] != false}">
+            <span>Разрешить печать / сохранение</span>
+        </label>
+        <label class="checkbox-line">
+            <input name="allowGuestShare" type="checkbox" value="true" th:checked="${activity.instance.config['allowGuestShare'] != false}">
+            <span>Разрешить поделиться</span>
+        </label>
+        <label class="checkbox-line">
+            <input name="showOnGuestPage" type="checkbox" value="true" th:checked="${activity.instance.config['showOnGuestPage'] != false}">
+            <span>Показывать гостям</span>
+        </label>
+        <label class="checkbox-line">
+            <input name="autoGenerateEnabled" type="checkbox" value="true" th:checked="${activity.instance.config['autoGenerateEnabled'] != false}">
+            <span>Включить автогенерацию</span>
+        </label>
+    </div>
+
+    <div class="activity-editor-section">
+        <div class="activity-editor-heading">
+            <strong>Типы сертификатов</strong>
+            <button class="secondary" type="button"
+                    th:onclick="|addActivityRow('certificate-type-template-${activity.instance.id}', 'certificate-types-${activity.instance.id}')|">Добавить сертификат</button>
+        </div>
+        <div class="activity-row-list" th:id="'certificate-types-' + ${activity.instance.id}">
+            <div class="activity-editor-row certificate-editor-row" th:each="type : ${activity.instance.config['certificateTypes']}">
+                <input name="certificateSlugs" th:value="${type['slug']}" placeholder="slug" required>
+                <input name="certificateTitles" th:value="${type['title']}" placeholder="Название" required>
+                <input name="certificateDescriptions" th:value="${type['description']}" placeholder="Описание">
+                <select name="certificateSources">
+                    <option value="manual" th:selected="${type['source'] == 'manual'}">Вручную</option>
+                    <option value="activity_leaderboard" th:selected="${type['source'] == 'activity_leaderboard'}">Лидер активности</option>
+                    <option value="total_leaderboard" th:selected="${type['source'] == 'total_leaderboard'}">Общий лидер</option>
+                    <option value="custom_result" th:selected="${type['source'] == 'custom_result'}">Custom</option>
+                </select>
+                <input name="certificateActivitySlugs" th:value="${type['rule'] == null ? '' : type['rule']['activitySlug']}" placeholder="slug активности">
+                <input name="certificateRanks" type="number" min="1" th:value="${type['rule'] == null ? 1 : (type['rule']['rank'] ?: 1)}" placeholder="Место">
+                <button class="ghost danger" type="button" onclick="removeActivityRow(this)">Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="activity-editor-section certificate-award-panel">
+        <div class="activity-editor-heading">
+            <strong>Выдать сертификат</strong>
+            <button type="submit"
+                    th:formaction="@{/admin/activities/{id}/certificates/award(id=${activity.instance.id})}">Выдать</button>
+        </div>
+        <div class="activity-editor-grid">
+            <label>Гость
+                <select name="guestId">
+                    <option th:each="accepted : ${acceptedGuests}"
+                            th:value="${accepted.id}"
+                            th:text="${accepted.name ?: accepted.label}">Гость</option>
+                </select>
+            </label>
+            <label>Тип сертификата
+                <select name="certificateTypeSlug">
+                    <option th:each="type : ${activity.instance.config['certificateTypes']}"
+                            th:value="${type['slug']}"
+                            th:text="${type['title']}">Сертификат</option>
+                </select>
+            </label>
+            <label>Свой заголовок
+                <input name="customTitle" placeholder="Можно оставить пустым">
+            </label>
+            <label class="activity-editor-wide">Свой текст
+                <input name="customText" placeholder="Можно оставить пустым">
+            </label>
+        </div>
+        <label class="checkbox-line">
+            <input name="overwriteExisting" type="checkbox" value="true">
+            <span>Перегенерировать существующие автоматические сертификаты</span>
+        </label>
+        <button class="secondary" type="submit"
+                th:formaction="@{/admin/activities/{id}/certificates/generate(id=${activity.instance.id})}">Сгенерировать по результатам</button>
+    </div>
+
+    <div class="activity-editor-section" th:if="${!#lists.isEmpty(activity.results)}">
+        <strong>Выданные сертификаты</strong>
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Гость</th>
+                <th>Сертификат</th>
+                <th>Источник</th>
+                <th>Действие</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="result : ${activity.results}" th:if="${result.resultData['type'] == 'guest-certificate'}">
+                <td th:text="${result.guest.name ?: result.guest.label}">Гость</td>
+                <td th:text="${result.resultData['certificateTitle']}">Сертификат</td>
+                <td th:text="${result.resultData['source']}">manual</td>
+                <td>
+                    <button class="ghost danger" type="submit"
+                            th:formaction="@{/admin/activities/{id}/certificates/{resultId}/delete(id=${activity.instance.id}, resultId=${result.id})}">Удалить</button>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <template th:id="'certificate-type-template-' + ${activity.instance.id}">
+        <div class="activity-editor-row certificate-editor-row">
+            <input name="certificateSlugs" placeholder="slug" required>
+            <input name="certificateTitles" placeholder="Название" required>
+            <input name="certificateDescriptions" placeholder="Описание">
+            <select name="certificateSources">
+                <option value="manual">Вручную</option>
+                <option value="activity_leaderboard">Лидер активности</option>
+                <option value="total_leaderboard">Общий лидер</option>
+                <option value="custom_result">Custom</option>
+            </select>
+            <input name="certificateActivitySlugs" placeholder="slug активности">
+            <input name="certificateRanks" type="number" min="1" value="1" placeholder="Место">
+            <button class="ghost danger" type="button" onclick="removeActivityRow(this)">Удалить</button>
+        </div>
+    </template>
+</th:block>
+</html>

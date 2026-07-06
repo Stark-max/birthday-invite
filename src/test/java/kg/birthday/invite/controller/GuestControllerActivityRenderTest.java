@@ -91,13 +91,76 @@ class GuestControllerActivityRenderTest {
                         "correctAnswer", "Ответ",
                         "points", 5
                 ))));
+        ActivityInstance guessGuest = activity(12L, event, "guess-guest", "Угадай гостя",
+                Map.of(
+                        "title", "Угадай гостя",
+                        "description", "Подсказки",
+                        "rounds", List.of(Map.of(
+                                "id", "r1",
+                                "clue", "Знает именинника",
+                                "answerGuestId", 1,
+                                "answerGuestName", "Гость",
+                                "optionGuestIds", List.of(1),
+                                "optionGuestNames", Map.of("1", "Гость"),
+                                "points", 10
+                        )),
+                        "optionsCount", 2,
+                        "shuffleOptions", true,
+                        "showCorrectAnswer", true,
+                        "showLeaderboard", true,
+                        "allowRetry", false,
+                        "useOnlyAcceptedGuests", true
+                ));
+        ActivityInstance countdown = activity(13L, event, "countdown-challenge", "Countdown Challenge",
+                Map.of(
+                        "title", "Обратный отсчёт",
+                        "description", "Задания",
+                        "timezone", "Asia/Bishkek",
+                        "unlockMode", "daily",
+                        "missedDaysPolicy", "allow_previous",
+                        "showCountdownTimer", true,
+                        "showProgress", true,
+                        "allowLateCompletion", true,
+                        "tasks", List.of(Map.of(
+                                "id", "day-1",
+                                "dayOffset", 1,
+                                "title", "1 день",
+                                "description", "Подтверди готовность",
+                                "type", "checkbox",
+                                "options", List.of(),
+                                "required", true,
+                                "points", 5
+                        ))
+                ));
+        ActivityInstance certificates = activity(14L, event, "guest-certificates", "Сертификаты гостей",
+                Map.of(
+                        "title", "Сертификаты гостей",
+                        "description", "Награды",
+                        "template", "elegant-gold",
+                        "allowGuestDownload", true,
+                        "allowGuestShare", true,
+                        "showOnGuestPage", true,
+                        "autoGenerateEnabled", true,
+                        "certificateTypes", List.of(Map.of(
+                                "slug", "best",
+                                "title", "Лучший",
+                                "description", "Описание",
+                                "source", "manual",
+                                "rule", Map.of()
+                        )),
+                        "certificateText", "{guestName} получает «{certificateTitle}»",
+                        "footerText", "Спасибо"
+                ));
 
         when(guestService.getGuestByCode("abc12345")).thenReturn(Optional.of(guest));
         when(eventService.getWishlist(1L)).thenReturn(List.of());
         when(guestService.getAcceptedGuests(1L)).thenReturn(List.of(guest));
         when(activityService.getEnabledActivityViews(1L)).thenReturn(List.of(
                 view(photo, "🖼", "{\"memes\":[{\"id\":\"drake\",\"name\":\"Drake Hotline Bling\"}]}"),
-                view(quiz, "🧠", "{\"questions\":[{\"id\":\"q1\",\"text\":\"Вопрос\"}]}")
+                view(quiz, "🧠", "{\"questions\":[{\"id\":\"q1\",\"text\":\"Вопрос\"}]}"),
+                view(guessGuest, "🕵️", "{\"rounds\":[{\"id\":\"r1\",\"clue\":\"Знает именинника\"}]}"),
+                view(countdown, "⏳", "{\"tasks\":[{\"id\":\"day-1\",\"title\":\"1 день\"}]}"),
+                view(certificates, "🏆", "{\"certificateTypes\":[{\"slug\":\"best\",\"title\":\"Лучший\"}]}")
         ));
         when(activityService.getEventLeaderboard(1L)).thenReturn(List.of());
         when(themeService.getEffectiveTheme(guest)).thenReturn(theme());
@@ -109,6 +172,9 @@ class GuestControllerActivityRenderTest {
                 .andExpect(content().string(containsString("meme-draw-10")))
                 .andExpect(content().string(not(containsString("quiz-root-10"))))
                 .andExpect(content().string(containsString("quiz-root-11")))
+                .andExpect(content().string(containsString("guess-guest-root-12")))
+                .andExpect(content().string(containsString("countdown-root-13")))
+                .andExpect(content().string(containsString("Открыть мои сертификаты")))
                 .andExpect(content().string(containsString("effect-spring")))
                 .andExpect(content().string(containsString("scene-spring")))
                 .andExpect(content().string(containsString("{\"questions\"")))

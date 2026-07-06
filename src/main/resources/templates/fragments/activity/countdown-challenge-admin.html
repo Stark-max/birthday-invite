@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="content(activity)">
+    <div class="activity-editor-grid">
+        <label>Название в гостевой странице
+            <input name="displayName" th:value="${activity.instance.displayName}">
+        </label>
+        <label>Заголовок
+            <input name="title" th:value="${activity.instance.config['title']}">
+        </label>
+        <label>Часовой пояс
+            <input name="timezone" th:value="${activity.instance.config['timezone'] ?: 'Asia/Bishkek'}">
+        </label>
+        <label>Режим открытия
+            <select name="unlockMode">
+                <option value="daily" th:selected="${activity.instance.config['unlockMode'] != 'all_at_once'}">По дням</option>
+                <option value="all_at_once" th:selected="${activity.instance.config['unlockMode'] == 'all_at_once'}">Все сразу</option>
+            </select>
+        </label>
+        <label>Пропущенные дни
+            <select name="missedDaysPolicy">
+                <option value="allow_previous" th:selected="${activity.instance.config['missedDaysPolicy'] != 'current_only'}">Разрешить прошлые</option>
+                <option value="current_only" th:selected="${activity.instance.config['missedDaysPolicy'] == 'current_only'}">Только текущий день</option>
+            </select>
+        </label>
+        <label class="activity-editor-wide">Описание
+            <input name="description" th:value="${activity.instance.config['description']}">
+        </label>
+        <label class="checkbox-line">
+            <input name="showCountdownTimer" type="checkbox" value="true" th:checked="${activity.instance.config['showCountdownTimer'] != false}">
+            <span>Показывать таймер</span>
+        </label>
+        <label class="checkbox-line">
+            <input name="showProgress" type="checkbox" value="true" th:checked="${activity.instance.config['showProgress'] != false}">
+            <span>Показывать прогресс</span>
+        </label>
+        <label class="checkbox-line">
+            <input name="allowLateCompletion" type="checkbox" value="true" th:checked="${activity.instance.config['allowLateCompletion'] != false}">
+            <span>Разрешить выполнять прошлые задания</span>
+        </label>
+    </div>
+
+    <div class="activity-editor-section">
+        <div class="activity-editor-heading">
+            <strong>Задания</strong>
+            <button class="secondary" type="button"
+                    th:onclick="|addActivityRow('countdown-task-template-${activity.instance.id}', 'countdown-tasks-${activity.instance.id}')|">Добавить задание</button>
+        </div>
+        <div class="activity-row-list" th:id="'countdown-tasks-' + ${activity.instance.id}">
+            <div class="activity-editor-row countdown-editor-row" th:each="task : ${activity.instance.config['tasks']}">
+                <input name="countdownTaskIds" th:value="${task['id']}" placeholder="day-7" required>
+                <input name="countdownTaskOffsets" type="number" min="0" th:value="${task['dayOffset'] ?: 0}" placeholder="За сколько дней">
+                <input name="countdownTaskTitles" th:value="${task['title']}" placeholder="Заголовок" required>
+                <textarea name="countdownTaskDescriptions" rows="2" th:text="${task['description']}" placeholder="Описание"></textarea>
+                <select name="countdownTaskTypes">
+                    <option value="text" th:selected="${task['type'] == 'text'}">Текст</option>
+                    <option value="checkbox" th:selected="${task['type'] == 'checkbox'}">Checkbox</option>
+                    <option value="choice" th:selected="${task['type'] == 'choice'}">Выбор</option>
+                    <option value="secret_code" th:selected="${task['type'] == 'secret_code'}">Секретный код</option>
+                </select>
+                <textarea name="countdownTaskOptions" rows="2" th:text="${#strings.listJoin(task['options'], '&#10;')}" placeholder="Варианты для choice"></textarea>
+                <select name="countdownTaskRequired">
+                    <option value="true" th:selected="${task['required'] != false}">Обязательное</option>
+                    <option value="false" th:selected="${task['required'] == false}">Необязательное</option>
+                </select>
+                <input name="countdownTaskCodes" th:value="${task['correctCode']}" placeholder="Код для secret_code">
+                <input name="countdownTaskPoints" type="number" min="0" th:value="${task['points'] ?: 5}" placeholder="Очки">
+                <button class="ghost danger" type="button" onclick="removeActivityRow(this)">Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <template th:id="'countdown-task-template-' + ${activity.instance.id}">
+        <div class="activity-editor-row countdown-editor-row">
+            <input name="countdownTaskIds" value="day-new" placeholder="day-7" required>
+            <input name="countdownTaskOffsets" type="number" min="0" value="1" placeholder="За сколько дней">
+            <input name="countdownTaskTitles" placeholder="Заголовок" required>
+            <textarea name="countdownTaskDescriptions" rows="2" placeholder="Описание"></textarea>
+            <select name="countdownTaskTypes">
+                <option value="text">Текст</option>
+                <option value="checkbox">Checkbox</option>
+                <option value="choice">Выбор</option>
+                <option value="secret_code">Секретный код</option>
+            </select>
+            <textarea name="countdownTaskOptions" rows="2" placeholder="Варианты для choice"></textarea>
+            <select name="countdownTaskRequired">
+                <option value="true">Обязательное</option>
+                <option value="false">Необязательное</option>
+            </select>
+            <input name="countdownTaskCodes" placeholder="Код для secret_code">
+            <input name="countdownTaskPoints" type="number" min="0" value="5" placeholder="Очки">
+            <button class="ghost danger" type="button" onclick="removeActivityRow(this)">Удалить</button>
+        </div>
+    </template>
+</th:block>
+</html>

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import kg.birthday.invite.activity.ActivityModule;
 import kg.birthday.invite.activity.ActivityResult;
+import kg.birthday.invite.activity.modules.GuestCertificatesModule;
 import kg.birthday.invite.activity.registry.ActivityRegistry;
 import kg.birthday.invite.dto.ActivityModuleInfo;
 import kg.birthday.invite.dto.ActivityView;
@@ -13,6 +14,7 @@ import kg.birthday.invite.entity.ActivityInstance;
 import kg.birthday.invite.entity.ActivityResultEntity;
 import kg.birthday.invite.entity.Event;
 import kg.birthday.invite.entity.Guest;
+import kg.birthday.invite.enums.RsvpStatus;
 import kg.birthday.invite.repository.ActivityInstanceRepository;
 import kg.birthday.invite.repository.ActivityResultRepository;
 import kg.birthday.invite.repository.EventRepository;
@@ -22,6 +24,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.MultiValueMap;
 
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,6 +41,7 @@ public class ActivityService {
 
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {
     };
+    private static final SecureRandom CERTIFICATE_RANDOM = new SecureRandom();
 
     private final ActivityRegistry activityRegistry;
     private final ActivityInstanceRepository activityInstanceRepository;
@@ -47,6 +53,11 @@ public class ActivityService {
     @Transactional(readOnly = true)
     public List<ActivityModuleInfo> getAvailableModules() {
         return activityRegistry.getModules().stream().map(this::toInfo).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<Guest> getAcceptedGuests(Long eventId) {
+        return guestRepository.findAllByEventIdAndStatus(eventId, RsvpStatus.ACCEPTED);
     }
 
     @Transactional(readOnly = true)
@@ -165,7 +176,11 @@ public class ActivityService {
         }
         ActivityModule module = getModule(instance.getModuleSlug());
         List<ActivityResultEntity> previousResults = activityResultsForAction(instance, guestId);
-        ActivityResult result = module.processAction(instance.getConfig(), action == null ? Map.of() : action, previousResults);
+        Map<String, Object> actionData = new LinkedHashMap<>(action == null ? Map.of() : action);
+        if ("countdown-challenge".equals(instance.getModuleSlug())) {
+            actionData.put("_eventDate", instance.getEvent().getDate().toString());
+        }
+        ActivityResult result = module.processAction(instance.getConfig(), actionData, previousResults);
         if (result.isSuccess()) {
             Guest scoreGuest = scoreGuest(result.getData(), guest);
             ActivityResultEntity entity = new ActivityResultEntity();
@@ -191,6 +206,99 @@ public class ActivityService {
     }
 
     @Transactional(readOnly = true)
+    public List<ActivityResultEntity> getGuestResults(Long instanceId, Long guestId) {
+        return activityResultRepository.findAllByActivityInstanceIdAndGuestIdOrderByCreatedAtDesc(instanceId, guestId);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean hasGuestPlayed(Long instanceId, Long guestId) {
+        return activityResultRepository.existsByActivityInstanceIdAndGuestId(instanceId, guestId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ActivityResultEntity> getGuestCertificates(Long eventId, Long guestId) {
+        return activityResultRepository.findAllByActivityInstance_Event_IdAndGuest_IdOrderByCreatedAtDesc(eventId, guestId).stream()
+                .filter(ActivityService::isCertificateResult)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<ActivityResultEntity> getGuestCertificate(Long eventId, Long guestId, Long resultId) {
+        return activityResultRepository.findByIdAndActivityInstance_Event_IdAndGuest_Id(resultId, eventId, guestId)
+                .filter(ActivityService::isCertificateResult);
+    }
+
+    @Transactional
+    public ActivityResult awardCertificate(
+            Long eventId,
+            Long instanceId,
+            Long guestId,
+            String certificateTypeSlug,
+            String customTitle,
+            String customText
+    ) {
+        ActivityInstance instance = certificateInstance(eventId, instanceId);
+        Guest guest = guestRepository.findByIdAndEventId(guestId, eventId)
+                .orElseThrow(() -> new IllegalArgumentException("Guest not found for event: " + guestId));
+        Map<String, Object> certificateType = certificateType(instance, certificateTypeSlug);
+        Map<String, Object> data = certificateData(instance, guest, certificateType, customTitle, customText, "manual");
+        ActivityResultEntity entity = new ActivityResultEntity();
+        entity.setActivityInstance(instance);
+        entity.setGuest(guest);
+        entity.setPoints(0);
+        entity.setResultData(data);
+        ActivityResultEntity saved = activityResultRepository.save(entity);
+        data.put("resultId", saved.getId());
+        saved.setResultData(data);
+        return ActivityResult.success("Сертификат выдан", 0, data);
+    }
+
+    @Transactional
+    public List<ActivityResult> generateCertificates(Long eventId, Long instanceId, boolean overwriteExisting) {
+        ActivityInstance instance = certificateInstance(eventId, instanceId);
+        if (!bool(instance.getConfig().getOrDefault("autoGenerateEnabled", true))) {
+            return List.of();
+        }
+        List<ActivityResult> generated = new ArrayList<>();
+        for (Map<String, Object> certificateType : GuestCertificatesModule.certificateTypes(instance.getConfig())) {
+            String source = text(certificateType.get("source"));
+            String slug = text(certificateType.get("slug"));
+            if (slug == null || source == null || "manual".equals(source)) {
+                continue;
+            }
+            List<ActivityResultEntity> existing = certificateResults(instance.getId()).stream()
+                    .filter(result -> slug.equals(text(result.getResultData().get("certificateTypeSlug"))))
+                    .toList();
+            if (!existing.isEmpty() && !overwriteExisting) {
+                continue;
+            }
+            if (overwriteExisting) {
+                existing.forEach(activityResultRepository::delete);
+            }
+            Guest winner = switch (source) {
+                case "activity_leaderboard" -> activityLeaderboardGuest(eventId, map(certificateType.get("rule")));
+                case "total_leaderboard" -> totalLeaderboardGuest(eventId, map(certificateType.get("rule")));
+                default -> null;
+            };
+            if (winner != null) {
+                generated.add(awardCertificate(eventId, instanceId, winner.getId(), slug, null, null));
+            }
+        }
+        return generated;
+    }
+
+    @Transactional
+    public void deleteCertificate(Long eventId, Long instanceId, Long resultId) {
+        certificateInstance(eventId, instanceId);
+        ActivityResultEntity result = activityResultRepository.findById(resultId)
+                .filter(ActivityService::isCertificateResult)
+                .filter(item -> Objects.equals(item.getActivityInstance().getId(), instanceId))
+                .filter(item -> Objects.equals(item.getActivityInstance().getEvent().getId(), eventId))
+                .orElseThrow(() -> new IllegalArgumentException("Certificate result not found: " + resultId));
+        activityResultRepository.delete(result);
+    }
+
+    @Transactional(readOnly = true)
     public List<GuestScore> getLeaderboard(Long eventId) {
         return getEventLeaderboard(eventId);
     }
@@ -200,6 +308,9 @@ public class ActivityService {
         List<ActivityResultEntity> results = activityResultRepository.findAllByActivityInstance_Event_Id(eventId);
         Map<Long, GuestScoreAccumulator> scores = new LinkedHashMap<>();
         for (ActivityResultEntity result : results) {
+            if (result.getPoints() <= 0) {
+                continue;
+            }
             Guest guest = result.getGuest();
             String activityName = result.getActivityInstance().getDisplayName();
             GuestScoreAccumulator accumulator = scores.computeIfAbsent(guest.getId(), id ->
@@ -211,6 +322,113 @@ public class ActivityService {
                 .map(acc -> new GuestScore(acc.guestId, acc.guestName, acc.totalPoints, acc.pointsByActivity))
                 .sorted(Comparator.comparingInt(GuestScore::totalPoints).reversed())
                 .toList();
+    }
+
+    private ActivityInstance certificateInstance(Long eventId, Long instanceId) {
+        ActivityInstance instance = getInstance(eventId, instanceId);
+        if (!"guest-certificates".equals(instance.getModuleSlug())) {
+            throw new IllegalArgumentException("Activity is not guest-certificates: " + instanceId);
+        }
+        return instance;
+    }
+
+    private Map<String, Object> certificateType(ActivityInstance instance, String certificateTypeSlug) {
+        String requestedSlug = text(certificateTypeSlug);
+        return GuestCertificatesModule.certificateTypes(instance.getConfig()).stream()
+                .filter(type -> Objects.equals(text(type.get("slug")), requestedSlug))
+                .findFirst()
+                .orElseGet(() -> {
+                    Map<String, Object> custom = new LinkedHashMap<>();
+                    custom.put("slug", requestedSlug == null ? "custom" : requestedSlug);
+                    custom.put("title", requestedSlug == null ? "Сертификат гостя" : requestedSlug);
+                    custom.put("description", "");
+                    custom.put("source", "manual");
+                    custom.put("rule", Map.of());
+                    return custom;
+                });
+    }
+
+    private Map<String, Object> certificateData(
+            ActivityInstance instance,
+            Guest guest,
+            Map<String, Object> certificateType,
+            String customTitle,
+            String customText,
+            String source
+    ) {
+        Event event = instance.getEvent();
+        String certificateTitle = firstText(customTitle, textOrFallback(certificateType.get("title"), "Сертификат гостя"));
+        String certificateDescription = firstText(customText, textOrFallback(certificateType.get("description"), ""));
+        String guestName = displayGuestName(guest);
+        String textTemplate = textOrFallback(instance.getConfig().get("certificateText"),
+                "Настоящий сертификат подтверждает, что {guestName} получает звание «{certificateTitle}» на дне рождения {eventName}.");
+        String certificateText = textTemplate
+                .replace("{guestName}", guestName)
+                .replace("{certificateTitle}", certificateTitle)
+                .replace("{eventName}", event.getName());
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("type", "guest-certificate");
+        data.put("action", "certificate_awarded");
+        data.put("source", source);
+        data.put("certificateTypeSlug", textOrFallback(certificateType.get("slug"), "custom"));
+        data.put("certificateCode", certificateCode(event));
+        data.put("guestId", guest.getId());
+        data.put("guestName", guestName);
+        data.put("certificateTitle", certificateTitle);
+        data.put("certificateDescription", certificateDescription);
+        data.put("certificateText", certificateText);
+        data.put("template", textOrFallback(instance.getConfig().get("template"), "elegant-gold"));
+        data.put("issuedAt", LocalDateTime.now().toString());
+        data.put("eventName", event.getName());
+        data.put("footerText", textOrFallback(instance.getConfig().get("footerText"), "Спасибо, что был(а) частью этого дня!"));
+        return data;
+    }
+
+    private Guest activityLeaderboardGuest(Long eventId, Map<String, Object> rule) {
+        String activitySlug = text(rule.get("activitySlug"));
+        int rank = Math.max(1, number(rule.get("rank"), 1));
+        if (activitySlug == null) {
+            return null;
+        }
+        return activityResultRepository.findAllByActivityInstance_Event_Id(eventId).stream()
+                .filter(result -> result.getPoints() > 0)
+                .filter(result -> activitySlug.equals(result.getActivityInstance().getModuleSlug()))
+                .collect(Collectors.groupingBy(result -> result.getGuest().getId(), Collectors.toList()))
+                .values().stream()
+                .map(results -> Map.entry(results.get(0).getGuest(), results.stream().mapToInt(ActivityResultEntity::getPoints).sum()))
+                .sorted(Map.Entry.<Guest, Integer>comparingByValue().reversed())
+                .skip(rank - 1L)
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private Guest totalLeaderboardGuest(Long eventId, Map<String, Object> rule) {
+        int rank = Math.max(1, number(rule.get("rank"), 1));
+        return getEventLeaderboard(eventId).stream()
+                .skip(rank - 1L)
+                .findFirst()
+                .flatMap(score -> guestRepository.findByIdAndEventId(score.guestId(), eventId))
+                .orElse(null);
+    }
+
+    private List<ActivityResultEntity> certificateResults(Long instanceId) {
+        return activityResultRepository.findAllByActivityInstanceIdOrderByCreatedAtDesc(instanceId).stream()
+                .filter(ActivityService::isCertificateResult)
+                .toList();
+    }
+
+    private static boolean isCertificateResult(ActivityResultEntity result) {
+        return result != null
+                && result.getResultData() != null
+                && "guest-certificate".equals(String.valueOf(result.getResultData().get("type")));
+    }
+
+    private static String certificateCode(Event event) {
+        int year = event.getDate() == null ? java.time.Year.now().getValue() : event.getDate().getYear();
+        int suffix = CERTIFICATE_RANDOM.nextInt(1_000_000);
+        return "CERT-" + year + "-" + String.format("%06d", suffix);
     }
 
     private List<ActivityView> toViews(List<ActivityInstance> instances) {
@@ -361,6 +579,18 @@ public class ActivityService {
         return text.isEmpty() ? null : text;
     }
 
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> map(Object value) {
+        return value instanceof Map<?, ?> raw ? (Map<String, Object>) raw : Map.of();
+    }
+
+    private boolean bool(Object value) {
+        if (value instanceof Boolean b) {
+            return b;
+        }
+        return Boolean.parseBoolean(String.valueOf(value));
+    }
+
     private ActivityModuleInfo toInfo(ActivityModule module) {
         return new ActivityModuleInfo(
                 module.getSlug(),
@@ -441,6 +671,9 @@ public class ActivityService {
             case "quiz" -> quizConfig(form);
             case "photo-challenge" -> photoChallengeConfig(form);
             case "truth-or-dare" -> truthOrDareConfig(form);
+            case "guess-guest" -> guessGuestConfig(form);
+            case "countdown-challenge" -> countdownChallengeConfig(form);
+            case "guest-certificates" -> guestCertificatesConfig(form);
             default -> throw new IllegalArgumentException("Activity module not found: " + moduleSlug);
         };
     }
@@ -558,6 +791,168 @@ public class ActivityService {
                 .toList());
         config.put("allowGuestAdd", checked(form, "allowGuestAdd"));
         return config;
+    }
+
+    private Map<String, Object> guessGuestConfig(MultiValueMap<String, String> form) {
+        List<String> ids = values(form, "guessRoundIds");
+        List<String> clues = values(form, "guessClues");
+        List<String> answerIds = values(form, "guessAnswerGuestIds");
+        List<String> optionIds = values(form, "guessOptionGuestIds");
+        List<String> points = values(form, "guessPoints");
+        List<Map<String, Object>> rounds = new ArrayList<>();
+        for (int i = 0; i < clues.size(); i++) {
+            String clue = trimToNull(clues.get(i));
+            if (clue == null) {
+                continue;
+            }
+            Long answerGuestId = number(valueAt(answerIds, i));
+            List<Long> options = splitIds(valueAt(optionIds, i));
+            if (answerGuestId != null && !options.contains(answerGuestId)) {
+                options = new ArrayList<>(options);
+                options.add(answerGuestId);
+            }
+            Map<Long, String> names = publicGuestNames(options);
+            Map<String, Object> round = new LinkedHashMap<>();
+            round.put("id", firstText(valueAt(ids, i), "r" + (rounds.size() + 1)));
+            round.put("clue", clue);
+            round.put("answerGuestId", answerGuestId);
+            round.put("answerGuestName", answerGuestId == null ? "" : names.getOrDefault(answerGuestId, "Гость " + answerGuestId));
+            round.put("optionGuestIds", options);
+            round.put("optionGuestNames", names.entrySet().stream()
+                    .collect(Collectors.toMap(entry -> String.valueOf(entry.getKey()), Map.Entry::getValue, (left, right) -> left, LinkedHashMap::new)));
+            round.put("points", Math.max(0, number(valueAt(points, i), 10)));
+            rounds.add(round);
+        }
+        Map<String, Object> config = new LinkedHashMap<>();
+        config.put("title", firstOrDefault(form, "title", "Угадай гостя"));
+        config.put("description", firstOrDefault(form, "description", "Прочитай подсказку и выбери, о ком идёт речь."));
+        config.put("rounds", rounds);
+        config.put("optionsCount", Math.max(2, number(firstRaw(form, "optionsCount"), 4)));
+        config.put("shuffleOptions", checked(form, "shuffleOptions"));
+        config.put("showCorrectAnswer", checked(form, "showCorrectAnswer"));
+        config.put("showLeaderboard", checked(form, "showLeaderboard"));
+        config.put("allowRetry", checked(form, "allowRetry"));
+        config.put("useOnlyAcceptedGuests", checked(form, "useOnlyAcceptedGuests"));
+        return config;
+    }
+
+    private Map<String, Object> countdownChallengeConfig(MultiValueMap<String, String> form) {
+        List<String> ids = values(form, "countdownTaskIds");
+        List<String> offsets = values(form, "countdownTaskOffsets");
+        List<String> titles = values(form, "countdownTaskTitles");
+        List<String> descriptions = values(form, "countdownTaskDescriptions");
+        List<String> types = values(form, "countdownTaskTypes");
+        List<String> options = values(form, "countdownTaskOptions");
+        List<String> required = values(form, "countdownTaskRequired");
+        List<String> codes = values(form, "countdownTaskCodes");
+        List<String> points = values(form, "countdownTaskPoints");
+        List<Map<String, Object>> tasks = new ArrayList<>();
+        for (int i = 0; i < titles.size(); i++) {
+            String title = trimToNull(titles.get(i));
+            String description = trimToNull(valueAt(descriptions, i));
+            if (title == null && description == null) {
+                continue;
+            }
+            String type = firstText(valueAt(types, i), "text");
+            Map<String, Object> task = new LinkedHashMap<>();
+            task.put("id", firstText(valueAt(ids, i), "day-" + Math.max(0, number(valueAt(offsets, i), tasks.size() + 1))));
+            task.put("dayOffset", Math.max(0, number(valueAt(offsets, i), tasks.size() + 1)));
+            task.put("title", title == null ? "Задание" : title);
+            task.put("description", description == null ? "Описание задания" : description);
+            task.put("type", type);
+            task.put("options", splitLines(valueAt(options, i)));
+            task.put("required", !"false".equals(valueAt(required, i)));
+            task.put("points", Math.max(0, number(valueAt(points, i), 5)));
+            String correctCode = trimToNull(valueAt(codes, i));
+            if (correctCode != null) {
+                task.put("correctCode", correctCode);
+            }
+            tasks.add(task);
+        }
+        Map<String, Object> config = new LinkedHashMap<>();
+        config.put("title", firstOrDefault(form, "title", "Обратный отсчёт до праздника"));
+        config.put("description", firstOrDefault(form, "description", "Каждый день открывается новое задание."));
+        config.put("timezone", firstOrDefault(form, "timezone", "Asia/Bishkek"));
+        config.put("unlockMode", firstOrDefault(form, "unlockMode", "daily"));
+        config.put("missedDaysPolicy", firstOrDefault(form, "missedDaysPolicy", "allow_previous"));
+        config.put("showCountdownTimer", checked(form, "showCountdownTimer"));
+        config.put("showProgress", checked(form, "showProgress"));
+        config.put("allowLateCompletion", checked(form, "allowLateCompletion"));
+        config.put("tasks", tasks);
+        return config;
+    }
+
+    private Map<String, Object> guestCertificatesConfig(MultiValueMap<String, String> form) {
+        List<String> slugs = values(form, "certificateSlugs");
+        List<String> titles = values(form, "certificateTitles");
+        List<String> descriptions = values(form, "certificateDescriptions");
+        List<String> sources = values(form, "certificateSources");
+        List<String> activitySlugs = values(form, "certificateActivitySlugs");
+        List<String> ranks = values(form, "certificateRanks");
+        List<Map<String, Object>> certificateTypes = new ArrayList<>();
+        for (int i = 0; i < titles.size(); i++) {
+            String title = trimToNull(titles.get(i));
+            if (title == null) {
+                continue;
+            }
+            String source = firstText(valueAt(sources, i), "manual");
+            Map<String, Object> rule = new LinkedHashMap<>();
+            if ("activity_leaderboard".equals(source)) {
+                rule.put("activitySlug", firstText(valueAt(activitySlugs, i), "quiz"));
+                rule.put("rank", Math.max(1, number(valueAt(ranks, i), 1)));
+            } else if ("total_leaderboard".equals(source)) {
+                rule.put("rank", Math.max(1, number(valueAt(ranks, i), 1)));
+            }
+            Map<String, Object> type = new LinkedHashMap<>();
+            type.put("slug", firstText(valueAt(slugs, i), slug(title)));
+            type.put("title", title);
+            type.put("description", firstText(valueAt(descriptions, i), ""));
+            type.put("source", source);
+            type.put("rule", rule);
+            certificateTypes.add(type);
+        }
+        Map<String, Object> config = new LinkedHashMap<>();
+        config.put("title", firstOrDefault(form, "title", "Сертификаты гостей"));
+        config.put("description", firstOrDefault(form, "description", "Памятные награды для гостей праздника."));
+        config.put("template", firstOrDefault(form, "template", "elegant-gold"));
+        config.put("allowGuestDownload", checked(form, "allowGuestDownload"));
+        config.put("allowGuestShare", checked(form, "allowGuestShare"));
+        config.put("showOnGuestPage", checked(form, "showOnGuestPage"));
+        config.put("autoGenerateEnabled", checked(form, "autoGenerateEnabled"));
+        config.put("certificateTypes", certificateTypes);
+        config.put("certificateText", firstOrDefault(form, "certificateText",
+                "Настоящий сертификат подтверждает, что {guestName} получает звание «{certificateTitle}» на дне рождения {eventName}."));
+        config.put("footerText", firstOrDefault(form, "footerText", "Спасибо, что был(а) частью этого дня!"));
+        return config;
+    }
+
+    private List<Long> splitIds(String value) {
+        String text = value == null ? "" : value;
+        return java.util.Arrays.stream(text.split("[,;\\s]+"))
+                .map(ActivityService::trimToNull)
+                .filter(Objects::nonNull)
+                .map(this::number)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+    }
+
+    private Map<Long, String> publicGuestNames(List<Long> guestIds) {
+        if (guestIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, String> names = guestRepository.findAllById(guestIds).stream()
+                .collect(Collectors.toMap(Guest::getId, this::publicGuestName, (left, right) -> left, LinkedHashMap::new));
+        Map<Long, String> ordered = new LinkedHashMap<>();
+        for (Long guestId : guestIds) {
+            ordered.put(guestId, names.getOrDefault(guestId, "Гость " + guestId));
+        }
+        return ordered;
+    }
+
+    private String publicGuestName(Guest guest) {
+        String name = text(guest.getName());
+        return name == null ? "Гость " + guest.getId() : name;
     }
 
     private static String firstRaw(MultiValueMap<String, String> form, String key) {

@@ -72,6 +72,15 @@
                     <th:block th:if="${activity.instance.moduleSlug == 'truth-or-dare'}">
                         <th:block th:replace="~{fragments/activity/truth-or-dare-admin :: content(${activity})}"></th:block>
                     </th:block>
+                    <th:block th:if="${activity.instance.moduleSlug == 'guess-guest'}">
+                        <th:block th:replace="~{fragments/activity/guess-guest-admin :: content(${activity})}"></th:block>
+                    </th:block>
+                    <th:block th:if="${activity.instance.moduleSlug == 'countdown-challenge'}">
+                        <th:block th:replace="~{fragments/activity/countdown-challenge-admin :: content(${activity})}"></th:block>
+                    </th:block>
+                    <th:block th:if="${activity.instance.moduleSlug == 'guest-certificates'}">
+                        <th:block th:replace="~{fragments/activity/guest-certificates-admin :: content(${activity})}"></th:block>
+                    </th:block>
                     <button type="submit">Сохранить настройки</button>
                 </form>
                 <table class="table">

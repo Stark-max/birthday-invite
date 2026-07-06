@@ -44,6 +44,7 @@ public class ActivityController {
                 .map(view -> view.instance().getModuleSlug())
                 .toList());
         model.addAttribute("disabledActivityViews", activityService.getDisabledActivityViews(event.getId()));
+        model.addAttribute("acceptedGuests", activityService.getAcceptedGuests(event.getId()));
         model.addAttribute("leaderboard", activityService.getEventLeaderboard(event.getId()));
         model.addAttribute("theme", themeService.getGlobalTheme(event.getId()));
         return "admin-activities";
@@ -102,6 +103,51 @@ public class ActivityController {
         return activityService.getResults(event.getId(), instanceId).stream().map(this::resultMap).toList();
     }
 
+    @PostMapping("/admin/activities/{instanceId}/certificates/award")
+    public String awardCertificate(
+            @PathVariable Long instanceId,
+            @RequestParam Long guestId,
+            @RequestParam String certificateTypeSlug,
+            @RequestParam(required = false) String customTitle,
+            @RequestParam(required = false) String customText,
+            HttpSession session
+    ) {
+        Event event = adminSessionService.currentEvent(session).orElse(null);
+        if (event == null) {
+            return accessRedirect(session);
+        }
+        activityService.awardCertificate(event.getId(), instanceId, guestId, certificateTypeSlug, customTitle, customText);
+        return "redirect:/admin/activities";
+    }
+
+    @PostMapping("/admin/activities/{instanceId}/certificates/generate")
+    public String generateCertificates(
+            @PathVariable Long instanceId,
+            @RequestParam(defaultValue = "false") boolean overwriteExisting,
+            HttpSession session
+    ) {
+        Event event = adminSessionService.currentEvent(session).orElse(null);
+        if (event == null) {
+            return accessRedirect(session);
+        }
+        activityService.generateCertificates(event.getId(), instanceId, overwriteExisting);
+        return "redirect:/admin/activities";
+    }
+
+    @PostMapping("/admin/activities/{instanceId}/certificates/{resultId}/delete")
+    public String deleteCertificate(
+            @PathVariable Long instanceId,
+            @PathVariable Long resultId,
+            HttpSession session
+    ) {
+        Event event = adminSessionService.currentEvent(session).orElse(null);
+        if (event == null) {
+            return accessRedirect(session);
+        }
+        activityService.deleteCertificate(event.getId(), instanceId, resultId);
+        return "redirect:/admin/activities";
+    }
+
     @PostMapping("/activities/{instanceId}/play")
     @ResponseBody
     public ResponseEntity<ActivityResult> play(
@@ -119,6 +165,7 @@ public class ActivityController {
     @ResponseBody
     public List<Map<String, Object>> leaderboard(@PathVariable Long instanceId) {
         return activityService.getResults(instanceId).stream()
+                .filter(result -> result.getPoints() > 0)
                 .collect(java.util.stream.Collectors.groupingBy(
                         result -> result.getGuest().getId(),
                         java.util.stream.Collectors.toList()

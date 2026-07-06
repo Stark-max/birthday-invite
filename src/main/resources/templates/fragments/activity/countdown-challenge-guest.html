@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="content(activity, guest, event)">
+    <script type="application/json" th:id="'countdown-config-' + ${activity.instance.id}" th:utext="${activity.configJson}"></script>
+    <div class="countdown-challenge stack"
+         th:id="'countdown-root-' + ${activity.instance.id}"
+         th:data-instance-id="${activity.instance.id}"
+         th:data-guest-id="${guest.id}"
+         th:data-event-date="${event.date}">
+        <div class="activity-mini-hero">
+            <h4 th:text="${activity.instance.config['title']}">Обратный отсчёт</h4>
+            <p class="muted" th:text="${activity.instance.config['description']}">Каждый день открывается новое задание.</p>
+            <strong class="countdown-timer" th:if="${activity.instance.config['showCountdownTimer'] != false}"
+                    th:id="'countdown-timer-' + ${activity.instance.id}">...</strong>
+        </div>
+        <div class="countdown-task-list">
+            <div class="countdown-task-card"
+                 th:each="task : ${activity.instance.config['tasks']}"
+                 th:id="'countdown-task-' + ${activity.instance.id} + '-' + ${task['id']}"
+                 th:data-task-id="${task['id']}"
+                 th:data-day-offset="${task['dayOffset']}"
+                 th:data-task-type="${task['type']}">
+                <span class="status pending" th:text="${task['dayOffset']} + ' дн.'">7 дн.</span>
+                <h4 th:text="${task['title']}">Задание</h4>
+                <p class="muted" th:text="${task['description']}">Описание</p>
+                <div class="countdown-answer"
+                     th:if="${task['type'] == 'choice'}">
+                    <select th:id="'countdown-answer-' + ${activity.instance.id} + '-' + ${task['id']}">
+                        <option value="">Выбери ответ</option>
+                        <option th:each="option : ${task['options']}" th:value="${option}" th:text="${option}">Вариант</option>
+                    </select>
+                </div>
+                <div class="countdown-answer"
+                     th:if="${task['type'] == 'checkbox'}">
+                    <label class="checkbox-line">
+                        <input type="checkbox" th:id="'countdown-answer-' + ${activity.instance.id} + '-' + ${task['id']}">
+                        <span>Готово</span>
+                    </label>
+                </div>
+                <div class="countdown-answer"
+                     th:if="${task['type'] != 'choice' and task['type'] != 'checkbox'}">
+                    <input th:id="'countdown-answer-' + ${activity.instance.id} + '-' + ${task['id']}"
+                           th:placeholder="${task['type'] == 'secret_code' ? 'Секретный код' : 'Ответ'}">
+                </div>
+                <button class="secondary" type="button"
+                        data-countdown-complete="true"
+                        th:data-instance-id="${activity.instance.id}"
+                        th:data-guest-id="${guest.id}"
+                        th:data-task-id="${task['id']}"
+                        onclick="completeCountdownTask(this)">Выполнить</button>
+            </div>
+        </div>
+        <p class="muted" th:id="'countdown-result-' + ${activity.instance.id}"></p>
+    </div>
+</th:block>
+</html>
